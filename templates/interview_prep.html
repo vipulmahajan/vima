@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Interview Prep Kit</title>
+  <link rel="stylesheet" href="resume.css" />
+  <link rel="stylesheet" href="interview_prep.css" />
+</head>
+<body>
+
+  <!-- ── HEADER ─────────────────────────────────────── -->
+  <header class="hdr">
+    <h1>Interview Prep Kit</h1>
+    {% if prep.context %}
+    <p class="headline">
+      {%- if prep.context.target_role %}{{ prep.context.target_role }}{% endif -%}
+      {%- if prep.context.company %} &mdash; {{ prep.context.company }}{% endif -%}
+      {%- if prep.context.round_label %} &middot; <em>{{ prep.context.round_label }}</em>{% endif -%}
+    </p>
+    {% endif %}
+  </header>
+
+  <!-- ── COMPANY BRIEF ──────────────────────────────── -->
+  {% if prep.company_brief %}
+  {% set cb = prep.company_brief %}
+  <section>
+    <h2>Company Brief</h2>
+    {% if cb.summary %}<p class="summary">{{ cb.summary }}</p>{% endif %}
+
+    {% if cb.recent_news %}
+    <h3>Recent News</h3>
+    <ul>
+      {% for item in cb.recent_news %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if cb.culture %}
+    <h3>Culture &amp; Working Style</h3>
+    <ul>
+      {% for c in cb.culture %}<li>{{ c }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if cb.investor_thesis %}
+    <h3>Investor Thesis</h3>
+    <p>{{ cb.investor_thesis }}</p>
+    {% endif %}
+
+    {% if cb.challenges %}
+    <h3>Strategic Challenges</h3>
+    <ul>
+      {% for ch in cb.challenges %}<li>{{ ch }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- ── LIKELY QUESTIONS ───────────────────────────── -->
+  {% if prep.likely_questions %}
+  <section>
+    <h2>Likely Questions</h2>
+    {% for q in prep.likely_questions %}
+    <article class="q-item">
+      <p class="q-line">
+        <strong>Q{{ loop.index }}.</strong> {{ q.question }}
+        {% if q.category %}<span class="q-tag">[{{ q.category }}]</span>{% endif %}
+      </p>
+      {% if q.why_asked %}<p class="q-why"><em>Why: {{ q.why_asked }}</em></p>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <!-- ── SUGGESTED ANSWERS (STAR) ───────────────────── -->
+  {% if prep.suggested_answers %}
+  <section>
+    <h2>Suggested Answers (STAR)</h2>
+    {% for sa in prep.suggested_answers %}
+    <article class="answer">
+      <p class="q-line"><strong>{{ sa.question }}</strong></p>
+      {% if sa.star %}
+        {% if sa.star.situation %}<p><span class="lbl">Situation:</span> {{ sa.star.situation }}</p>{% endif %}
+        {% if sa.star.task      %}<p><span class="lbl">Task:</span> {{ sa.star.task }}</p>{% endif %}
+        {% if sa.star.action    %}<p><span class="lbl">Action:</span> {{ sa.star.action }}</p>{% endif %}
+        {% if sa.star.result    %}<p><span class="lbl">Result:</span> {{ sa.star.result }}</p>{% endif %}
+      {% endif %}
+      {% if sa.anchor_evidence %}
+      <p class="anchor"><em>Anchored in: {{ sa.anchor_evidence }}</em></p>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <!-- ── QUESTIONS TO ASK ───────────────────────────── -->
+  {% if prep.questions_to_ask %}
+  <section>
+    <h2>Questions to Ask</h2>
+    {% for q in prep.questions_to_ask %}
+    <article class="q-item">
+      <p class="q-line"><strong>{{ q.question }}</strong></p>
+      {% if q.signals %}<p class="q-why"><em>Signals: {{ q.signals }}</em></p>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <!-- ── RED FLAGS ──────────────────────────────────── -->
+  {% if prep.red_flags %}
+  <section>
+    <h2>Red Flags &mdash; Avoid These</h2>
+    {% for r in prep.red_flags %}
+    <article class="redflag">
+      <p><span class="lbl">Mistake:</span> {{ r.mistake }}</p>
+      {% if r.instead %}<p><span class="lbl">Instead:</span> {{ r.instead }}</p>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+</body>
+</html>

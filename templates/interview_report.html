@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mock Interview Feedback</title>
+  <link rel="stylesheet" href="resume.css" />
+</head>
+<body>
+  <header class="hdr">
+    <h1>Mock Interview Feedback</h1>
+    {% if report.target_role %}<p class="headline">{{ report.target_role }}</p>{% endif %}
+  </header>
+
+  <section>
+    <h2>Overall</h2>
+    <p><strong>{{ report.overall_rating }}</strong> &mdash; {{ report.summary }}</p>
+  </section>
+
+  {% if report.strengths %}
+  <section>
+    <h2>Strengths</h2>
+    <ul>{% for s in report.strengths %}<li>{{ s }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  {% if report.gaps %}
+  <section>
+    <h2>Gaps</h2>
+    <ul>{% for g in report.gaps %}<li>{{ g }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  {% if report.answer_critiques %}
+  <section>
+    <h2>Question-by-question</h2>
+    {% for q in report.answer_critiques %}
+    <article class="role">
+      <strong>Q:</strong> {{ q.question }}
+      <p><em>What worked:</em> {{ q.what_worked }}</p>
+      <p><em>What to improve:</em> {{ q.what_to_improve }}</p>
+      <p><em>Model answer:</em> {{ q.model_answer }}</p>
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if report.next_steps %}
+  <section>
+    <h2>Next steps</h2>
+    <ul>{% for n in report.next_steps %}<li>{{ n }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+</body>
+</html>

@@ -1,0 +1,43 @@
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+
+# --- Config ---
+pydantic>=2.11
+pydantic-settings>=2.7
+python-dotenv>=1.0
+
+# --- HTTP ---
+httpx>=0.27,<0.29
+
+# --- AWS (Transcribe + S3) ---
+boto3==1.35.99
+
+# --- AI ---
+anthropic==0.40.0
+
+# --- Database / Storage ---
+supabase==2.10.0
+
+# --- Payments ---
+razorpay>=1.4.2
+
+# --- Document parsing / OCR ---
+pdfplumber==0.11.4
+PyPDF2>=3.0
+python-docx==1.1.2
+pytesseract>=0.3.10
+pillow>=10.0
+pdf2image>=1.17
+
+# --- PDF / DOCX generation ---
+weasyprint==63.1
+jinja2==3.1.5
+# python-docx is also listed under "Document parsing / OCR" — it's used
+# for both resume input parsing and Word output generation.
+
+# --- Dev ---
+pytest==8.3.4
+pytest-asyncio==0.25.0
+ruff==0.8.4

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a4a8c" />
+  <title>Privacy Policy — ViMa</title>
+  <meta name="description" content="ViMa privacy policy: what data we collect, how it's used, and how to request deletion." />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.6;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #0a4a8c; }
+    .container { max-width: 720px; margin: 0 auto; padding: 0 20px; }
+
+    .topbar { padding: 22px 0 8px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      width: 40px; height: 40px;
+      background: #0a4a8c; color: #fff; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 22px; font-weight: 700;
+    }
+    .brand-name { font-size: 22px; font-weight: 700; color: #0a4a8c; }
+
+    main { padding: 24px 0 60px; }
+    h1 { font-size: 28px; margin: 0 0 6px; }
+    .updated { color: #64748b; font-size: 13.5px; margin: 0 0 24px; }
+    h2 {
+      font-size: 16px;
+      letter-spacing: 0.4px;
+      margin: 22px 0 8px;
+      color: #0a4a8c;
+    }
+    p, li { color: #1f2937; }
+    ul { padding-left: 22px; margin: 6px 0 12px; }
+    li { margin: 4px 0; }
+
+    footer {
+      padding: 24px 0 32px;
+      border-top: 1px solid #e2e8f0;
+      color: #64748b; font-size: 13.5px;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px;
+    }
+    footer a { color: #475569; }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container brand">
+      <a href="/" style="text-decoration: none; display: flex; align-items: center; gap: 12px;">
+        <div class="brand-mark">V</div>
+        <div class="brand-name">ViMa</div>
+      </a>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: April 2026</p>
+
+    <p>
+      ViMa is a WhatsApp-first career coach for Indian corporate professionals.
+      This page explains, in plain language, what we collect from you, how we
+      use it, and how to ask us to delete it.
+    </p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li>
+        <strong>Your WhatsApp phone number.</strong> This is how we send your
+        outputs back to you and recognise you on subsequent messages.
+      </li>
+      <li>
+        <strong>The content you share in chat.</strong> This includes your
+        resume(s), LinkedIn URL, job descriptions, hiring-manager details,
+        and any text or voice messages you send. We store the extracted text
+        from any documents you upload.
+      </li>
+      <li>
+        <strong>Your conversation history with ViMa.</strong> Messages to and
+        from you are stored so the coach has context on subsequent turns.
+      </li>
+      <li>
+        <strong>Payment metadata.</strong> When you buy a 60-day access pass,
+        Razorpay handles the actual payment. We store the payment link id, the
+        Razorpay payment id, the amount, and the activation/expiry timestamps.
+        We never see or store your card or bank details.
+      </li>
+    </ul>
+
+    <h2>How we use it</h2>
+    <ul>
+      <li>
+        To generate the career-coaching output you asked for — a tailored
+        resume, an interview prep kit, or a coaching reply.
+      </li>
+      <li>
+        To remember where you are in a multi-step conversation, so we don't
+        re-ask questions you've already answered.
+      </li>
+      <li>
+        To send you the access-pass payment link, and to unlock your account
+        once Razorpay confirms a successful payment.
+      </li>
+      <li>
+        To improve ViMa over time — for example, to understand which kinds of
+        responses are most useful. Any analysis we do here is on aggregated,
+        anonymised data; we do not look at individual conversations except
+        when investigating a specific bug or abuse report.
+      </li>
+    </ul>
+
+    <h2>Where it lives</h2>
+    <p>
+      Your data is stored in Supabase (Postgres) and Supabase Storage, hosted
+      in the AWS Mumbai (ap-south-1) region. Connections to Supabase use TLS.
+      Generated PDFs are kept in a private storage bucket and delivered to you
+      via short-lived signed URLs over WhatsApp.
+    </p>
+
+    <h2>Who we share it with</h2>
+    <p>
+      We <strong>never sell or share your data with third parties</strong> for
+      marketing or advertising. The only third parties that touch your data
+      are the providers we need to actually run ViMa:
+    </p>
+    <ul>
+      <li>
+        <strong>Anthropic (Claude API)</strong> — receives the conversation
+        context required to generate your resume / prep kit / coaching reply.
+      </li>
+      <li>
+        <strong>Gupshup</strong> — delivers WhatsApp messages on India's
+        official WhatsApp Business API.
+      </li>
+      <li>
+        <strong>Razorpay</strong> — processes your access-pass payment.
+      </li>
+      <li>
+        <strong>AWS Transcribe</strong> — converts your voice notes to text,
+        only when you send a voice message.
+      </li>
+    </ul>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li>
+        <strong>Stop sharing:</strong> simply stop messaging ViMa. We won't
+        send you anything you didn't ask for.
+      </li>
+      <li>
+        <strong>Delete your data:</strong> email
+        <a href="mailto:{{ support_email }}">{{ support_email }}</a> from any
+        address with the subject line <em>Delete my ViMa data</em> and include
+        the WhatsApp phone number you used. We'll permanently delete your
+        records within 7 working days and reply to confirm.
+      </li>
+      <li>
+        <strong>Ask what we have:</strong> the same email address works for a
+        copy of the data we hold on you.
+      </li>
+    </ul>
+
+    <h2>Children</h2>
+    <p>
+      ViMa is built for working professionals. It is not intended for, and
+      should not be used by, anyone under 18.
+    </p>
+
+    <h2>Changes to this policy</h2>
+    <p>
+      If we materially change how we handle your data, we'll update this page
+      and message any active users on WhatsApp. The date at the top of this
+      page is the last update.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions or concerns? Email
+      <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
+    </p>
+  </main>
+
+  <footer class="container">
+    <span><a href="/">← Back to home</a></span>
+    <span><a href="mailto:{{ support_email }}">{{ support_email }}</a></span>
+  </footer>
+
+</body>
+</html>

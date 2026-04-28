@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ resume.name | default('Resume') }}</title>
+  <link rel="stylesheet" href="resume.css" />
+</head>
+<body>
+
+  <!-- ── HEADER ─────────────────────────────────────── -->
+  <header class="hdr">
+    <h1>{{ resume.name | default('') }}</h1>
+    {% if resume.headline %}<p class="headline">{{ resume.headline }}</p>{% endif %}
+    {% set c = resume.contact or {} %}
+    <p class="contact">
+      {%- if c.email    %}<span>{{ c.email }}</span>{% endif %}
+      {%- if c.phone    %}<span class="sep">&bull;</span><span>{{ c.phone }}</span>{% endif %}
+      {%- if c.location %}<span class="sep">&bull;</span><span>{{ c.location }}</span>{% endif %}
+      {%- if c.linkedin %}<span class="sep">&bull;</span><span>{{ c.linkedin }}</span>{% endif %}
+      {%- if c.github   %}<span class="sep">&bull;</span><span>{{ c.github }}</span>{% endif %}
+    </p>
+  </header>
+
+  <!-- ── PROFESSIONAL SUMMARY ───────────────────────── -->
+  {% if resume.summary %}
+  <section>
+    <h2>Professional Summary</h2>
+    <p class="summary">{{ resume.summary }}</p>
+  </section>
+  {% endif %}
+
+  <!-- ── KEY SKILLS ─────────────────────────────────── -->
+  {% if resume.skills %}
+  <section>
+    <h2>Key Skills</h2>
+    {% if resume.skills is mapping %}
+      {# Grouped skills: {"Domain": ["skill", ...], ...} #}
+      <table class="skills-table">
+        {% for group, items in resume.skills.items() %}
+        <tr>
+          <td class="skill-group">{{ group }}</td>
+          <td>{{ items | join(' &middot; ') | safe }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      {# Flat list #}
+      <p class="skills-flat">{{ resume.skills | join(' &ensp;&bull;&ensp; ') | safe }}</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- ── EXPERIENCE ─────────────────────────────────── -->
+  {% if resume.experience %}
+  <section>
+    <h2>Professional Experience</h2>
+    {% for role in resume.experience %}
+    <article class="role">
+      <div class="role-head">
+        <div class="role-title-block">
+          <span class="role-title">{{ role.title }}</span>
+          <span class="role-company">&nbsp;&mdash;&nbsp;{{ role.company }}</span>
+          {%- if role.location %}<span class="role-loc">, {{ role.location }}</span>{% endif %}
+        </div>
+        <span class="dates">{{ role.start }}&nbsp;&ndash;&nbsp;{{ role.end }}</span>
+      </div>
+      {%- if role.context %}<p class="role-context">{{ role.context }}</p>{% endif %}
+      {% if role.bullets %}
+      <ul>
+        {% for b in role.bullets %}<li>{{ b }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {%- if role.key_achievement %}
+      <p class="highlight"><strong>Key Achievement:</strong> {{ role.key_achievement }}</p>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <!-- ── KEY ACHIEVEMENTS (standalone) ─────────────── -->
+  {% if resume.achievements %}
+  <section>
+    <h2>Key Achievements</h2>
+    <ul>
+      {% for a in resume.achievements %}<li>{{ a }}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <!-- ── PROJECTS ───────────────────────────────────── -->
+  {% if resume.projects %}
+  <section>
+    <h2>Notable Projects</h2>
+    {% for p in resume.projects %}
+    <article class="project">
+      <div class="role-head">
+        <strong>{{ p.name }}</strong>
+        {%- if p.tech %}<span class="tech">&nbsp;[{{ p.tech | join(', ') }}]</span>{% endif %}
+        {%- if p.period %}<span class="dates">{{ p.period }}</span>{% endif %}
+      </div>
+      <p>{{ p.description }}</p>
+      {% if p.bullets %}
+      <ul>{% for b in p.bullets %}<li>{{ b }}</li>{% endfor %}</ul>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <!-- ── EDUCATION ──────────────────────────────────── -->
+  {% if resume.education %}
+  <section>
+    <h2>Education</h2>
+    {% for e in resume.education %}
+    <article class="edu-item">
+      <div class="role-head">
+        <div>
+          <strong>{{ e.degree }}</strong><span class="role-company">&nbsp;&mdash;&nbsp;{{ e.institution }}</span>
+        </div>
+        {%- if e.year %}<span class="dates">{{ e.year }}</span>{% endif %}
+      </div>
+      {%- if e.details %}<p class="muted">{{ e.details }}</p>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <!-- ── CERTIFICATIONS ─────────────────────────────── -->
+  {% if resume.certifications %}
+  <section>
+    <h2>Certifications &amp; Training</h2>
+    <ul class="cert-list">
+      {% for cert in resume.certifications %}
+        {% if cert is mapping %}
+          <li><strong>{{ cert.name }}</strong>{% if cert.issuer %}&nbsp;&mdash;&nbsp;{{ cert.issuer }}{% endif %}{% if cert.year %}&nbsp;({{ cert.year }}){% endif %}</li>
+        {% else %}
+          <li>{{ cert }}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <!-- ── PUBLICATIONS / PATENTS ─────────────────────── -->
+  {% if resume.publications %}
+  <section>
+    <h2>Publications &amp; Patents</h2>
+    <ul>
+      {% for pub in resume.publications %}<li>{{ pub }}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <!-- ── AWARDS ─────────────────────────────────────── -->
+  {% if resume.awards %}
+  <section>
+    <h2>Awards &amp; Recognition</h2>
+    <ul>
+      {% for a in resume.awards %}<li>{{ a }}</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <!-- ── PROFESSIONAL MEMBERSHIPS ───────────────────── -->
+  {% if resume.memberships %}
+  <section>
+    <h2>Professional Memberships</h2>
+    <p>{{ resume.memberships | join(' &ensp;&bull;&ensp; ') | safe }}</p>
+  </section>
+  {% endif %}
+
+  <!-- ── LANGUAGES ──────────────────────────────────── -->
+  {% if resume.languages %}
+  <section>
+    <h2>Languages</h2>
+    <p>{{ resume.languages | join(' &ensp;&bull;&ensp; ') | safe }}</p>
+  </section>
+  {% endif %}
+
+</body>
+</html>

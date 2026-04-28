@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a4a8c" />
+  <title>ViMa — Your senior career coach, on WhatsApp</title>
+  <meta name="description" content="ViMa is a WhatsApp-first AI career coach for Indian corporate professionals. Tailored resumes, interview prep, and trusted mentorship — all on chat." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230a4a8c'/%3E%3Ctext x='50' y='62' font-family='Georgia,serif' font-size='52' font-weight='700' fill='%23fff' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E" />
+
+  <style>
+    /* ── Reset / base ───────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                   "Helvetica Neue", Arial, sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.55;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #0a4a8c; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { max-width: 100%; display: block; }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .topbar {
+      padding: 22px 0 8px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-mark {
+      width: 40px; height: 40px;
+      background: #0a4a8c;
+      color: #fff;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 22px; font-weight: 700;
+    }
+    .brand-name {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: #0a4a8c;
+    }
+
+    /* ── Hero ───────────────────────────────────────────────── */
+    .hero {
+      padding: 32px 0 24px;
+      text-align: left;
+    }
+    .hero h1 {
+      margin: 0 0 14px 0;
+      font-size: 32px;
+      line-height: 1.2;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .hero .lead {
+      margin: 0 0 24px 0;
+      font-size: 17px;
+      color: #475569;
+      max-width: 560px;
+    }
+
+    .cta {
+      display: inline-block;
+      background: #0a4a8c;
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 17px;
+      padding: 16px 28px;
+      border-radius: 12px;
+      box-shadow: 0 6px 14px rgba(10, 74, 140, 0.18);
+      transition: background 0.15s ease, transform 0.05s ease;
+    }
+    .cta:hover { background: #08407a; text-decoration: none; }
+    .cta:active { transform: translateY(1px); }
+    .cta-row { margin-top: 8px; }
+    .cta-sub {
+      display: block;
+      margin-top: 10px;
+      font-size: 13.5px;
+      color: #64748b;
+    }
+
+    /* ── Sections ───────────────────────────────────────────── */
+    section {
+      padding: 28px 0;
+      border-top: 1px solid #e2e8f0;
+    }
+    h2 {
+      font-size: 14px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #0a4a8c;
+      margin: 0 0 14px 0;
+      font-weight: 700;
+    }
+    h3 {
+      font-size: 17px;
+      margin: 0 0 6px 0;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    p { margin: 0 0 12px 0; }
+
+    /* ── Value props ────────────────────────────────────────── */
+    .props {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 640px) {
+      .props { grid-template-columns: 1fr 1fr 1fr; }
+    }
+    .prop {
+      padding: 18px 18px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+    .prop p { color: #475569; font-size: 14.5px; margin: 0; }
+
+    /* ── How it works ───────────────────────────────────────── */
+    ol.steps {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      counter-reset: step;
+    }
+    ol.steps li {
+      counter-increment: step;
+      padding: 14px 0 14px 52px;
+      position: relative;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    ol.steps li:last-child { border-bottom: 0; }
+    ol.steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0; top: 12px;
+      width: 36px; height: 36px;
+      background: #0a4a8c;
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+    }
+    ol.steps strong { color: #0f172a; }
+    ol.steps p { color: #475569; font-size: 14.5px; margin: 4px 0 0 0; }
+
+    /* ── Pricing ────────────────────────────────────────────── */
+    .pricing {
+      text-align: center;
+      padding: 26px 18px;
+      border: 2px solid #0a4a8c;
+      border-radius: 14px;
+      background: #f0f7ff;
+    }
+    .pricing .amount {
+      font-size: 36px;
+      font-weight: 700;
+      color: #0a4a8c;
+      margin: 6px 0 2px;
+    }
+    .pricing .label {
+      font-size: 15px;
+      color: #475569;
+      margin: 0 0 10px;
+    }
+    .pricing ul {
+      text-align: left;
+      max-width: 360px;
+      margin: 14px auto 18px;
+      padding: 0;
+      list-style: none;
+    }
+    .pricing li {
+      padding: 6px 0 6px 26px;
+      position: relative;
+      color: #334155;
+      font-size: 14.5px;
+    }
+    .pricing li::before {
+      content: "✓";
+      color: #0a4a8c;
+      font-weight: 700;
+      position: absolute;
+      left: 0; top: 6px;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────── */
+    footer {
+      padding: 28px 0 32px;
+      border-top: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 13.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    footer a { color: #475569; }
+    footer .copyright { color: #94a3b8; }
+
+    /* ── Tiny screens tighten further ───────────────────────── */
+    @media (max-width: 360px) {
+      .hero h1 { font-size: 28px; }
+      .cta     { padding: 14px 22px; font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── HEADER ─────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="container brand">
+      <div class="brand-mark">V</div>
+      <div class="brand-name">ViMa</div>
+    </div>
+  </header>
+
+  <!-- ── HERO ───────────────────────────────────────────────── -->
+  <main class="container hero">
+    <h1>Your senior career coach, on WhatsApp.</h1>
+    <p class="lead">
+      ViMa helps Indian corporate professionals walk into their next role
+      prepared and clear — with a tailored resume, sharp interview prep,
+      and honest mentorship. All on chat. No app to install.
+    </p>
+    <p class="cta-row">
+      <a class="cta" href="{{ wa_link }}" target="_blank" rel="noopener">
+        Start on WhatsApp
+      </a>
+      {% if wa_number %}
+      <span class="cta-sub">+{{ wa_number }}</span>
+      {% endif %}
+    </p>
+  </main>
+
+  <!-- ── VALUE PROPS ────────────────────────────────────────── -->
+  <section class="container">
+    <h2>What ViMa Does</h2>
+    <div class="props">
+      <div class="prop">
+        <h3>Tailored Resume</h3>
+        <p>A resume rewritten role-by-role for the job you're applying to —
+           ATS-clean, quantified, and honest. Delivered as PDF and Word.</p>
+      </div>
+      <div class="prop">
+        <h3>Interview Prep</h3>
+        <p>A round-specific prep kit: company brief, likely questions with
+           STAR-format answers from your own experience, and red flags to
+           avoid. Optional mock interview at the end.</p>
+      </div>
+      <div class="prop">
+        <h3>Trusted Mentor</h3>
+        <p>Free-form coaching on salary, role transitions, manager problems —
+           grounded in the Indian corporate context, no hype.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ───────────────────────────────────────── -->
+  <section class="container">
+    <h2>How It Works</h2>
+    <ol class="steps">
+      <li>
+        <strong>Message ViMa on WhatsApp.</strong>
+        <p>Tap the button above. No sign-up form, no app download.</p>
+      </li>
+      <li>
+        <strong>Share your details.</strong>
+        <p>Send your current resume, the JD, and a few notes. ViMa asks
+           focused follow-ups — the conversation feels human.</p>
+      </li>
+      <li>
+        <strong>Get your output.</strong>
+        <p>Receive your tailored resume + strategy notes in PDF and Word.
+           Or a full interview prep kit. Or just keep chatting for advice.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ── PRICING ────────────────────────────────────────────── -->
+  <section class="container">
+    <h2>Pricing</h2>
+    <div class="pricing">
+      <div class="amount">₹{{ "{:,}".format(price_inr) }}</div>
+      <p class="label">60-day access pass — one-time payment</p>
+      <ul>
+        <li>Unlimited tailored resumes</li>
+        <li>Unlimited interview prep kits</li>
+        <li>Unlimited mentor chat</li>
+        <li>30 + 30 days of full access</li>
+      </ul>
+      <a class="cta" href="{{ wa_link }}" target="_blank" rel="noopener">
+        Start on WhatsApp
+      </a>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────── -->
+  <footer class="container">
+    <span class="copyright">© ViMa</span>
+    <span><a href="/privacy">Privacy Policy</a></span>
+  </footer>
+
+</body>
+</html>

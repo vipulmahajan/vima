@@ -1,0 +1,197 @@
+/* ViMa Resume Template — A4, 2-3 pages, senior Indian corporate style */
+
+@page {
+  size: A4;
+  margin: 16mm 18mm;
+}
+
+/* Page break helpers */
+section        { page-break-inside: auto; }
+article.role   { page-break-inside: avoid; }
+article.edu-item { page-break-inside: avoid; }
+h2             { page-break-after: avoid; }
+
+/* ── Base ──────────────────────────────────────────── */
+body {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #1a1a1a;
+}
+
+/* ── Header ────────────────────────────────────────── */
+.hdr {
+  border-bottom: 2pt solid #1a1a1a;
+  padding-bottom: 6pt;
+  margin-bottom: 10pt;
+}
+
+h1 {
+  font-size: 22pt;
+  font-weight: bold;
+  letter-spacing: 0.5pt;
+  margin: 0 0 3pt 0;
+  font-family: "Arial", "Helvetica", sans-serif;
+}
+
+.hdr .headline {
+  font-size: 10.5pt;
+  font-style: italic;
+  color: #444;
+  margin: 0 0 4pt 0;
+  font-family: "Arial", "Helvetica", sans-serif;
+}
+
+.hdr .contact {
+  font-size: 9pt;
+  color: #333;
+  font-family: "Arial", "Helvetica", sans-serif;
+  margin: 0;
+}
+
+.hdr .contact .sep {
+  margin: 0 4pt;
+  color: #999;
+}
+
+/* ── Section headings ──────────────────────────────── */
+h2 {
+  font-family: "Arial", "Helvetica", sans-serif;
+  font-size: 10pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.2pt;
+  border-bottom: 0.75pt solid #1a1a1a;
+  margin: 12pt 0 6pt 0;
+  padding-bottom: 2pt;
+  color: #1a1a1a;
+}
+
+/* ── Summary ───────────────────────────────────────── */
+.summary {
+  margin: 0;
+  text-align: justify;
+}
+
+/* ── Skills ────────────────────────────────────────── */
+.skills-flat {
+  margin: 0;
+  line-height: 1.8;
+}
+
+.skills-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10pt;
+}
+
+.skills-table td {
+  padding: 1.5pt 6pt 1.5pt 0;
+  vertical-align: top;
+}
+
+.skills-table .skill-group {
+  font-weight: bold;
+  white-space: nowrap;
+  padding-right: 8pt;
+  color: #333;
+  width: 22%;
+}
+
+/* ── Role / experience ─────────────────────────────── */
+.role {
+  margin-bottom: 10pt;
+}
+
+.role-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 2pt;
+}
+
+.role-title {
+  font-weight: bold;
+  font-size: 10.5pt;
+}
+
+.role-company {
+  font-style: italic;
+  color: #333;
+}
+
+.role-loc {
+  color: #555;
+}
+
+.dates {
+  font-size: 9.5pt;
+  color: #555;
+  font-family: "Arial", "Helvetica", sans-serif;
+  white-space: nowrap;
+  margin-left: auto;
+  padding-left: 6pt;
+}
+
+.role-context {
+  font-size: 9.5pt;
+  color: #444;
+  margin: 1pt 0 2pt 0;
+  font-style: italic;
+}
+
+ul {
+  margin: 3pt 0 0 16pt;
+  padding: 0;
+}
+
+li {
+  margin: 0 0 2.5pt 0;
+  text-align: justify;
+}
+
+.highlight {
+  margin: 4pt 0 0 0;
+  font-size: 9.5pt;
+  background: #f5f5f5;
+  padding: 2pt 4pt;
+  border-left: 2pt solid #444;
+}
+
+/* ── Projects ──────────────────────────────────────── */
+.project {
+  margin-bottom: 8pt;
+}
+
+.tech {
+  font-size: 9pt;
+  color: #555;
+  font-family: "Arial", "Helvetica", sans-serif;
+}
+
+/* ── Education ─────────────────────────────────────── */
+.edu-item {
+  margin-bottom: 6pt;
+}
+
+/* ── Certifications ────────────────────────────────── */
+.cert-list {
+  margin: 3pt 0 0 16pt;
+  padding: 0;
+}
+
+.cert-list li {
+  margin: 0 0 3pt 0;
+}
+
+/* ── Misc ──────────────────────────────────────────── */
+.muted {
+  color: #555;
+  font-size: 9.5pt;
+  margin: 1pt 0 0 0;
+}
+
+section {
+  margin-bottom: 4pt;
+}

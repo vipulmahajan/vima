@@ -1,0 +1,82 @@
+# Nixpacks build plan for ViMa.
+#
+# Two reasons we need a custom plan:
+#
+#  1. WeasyPrint loads GTK / Pango / Cairo at import time via cffi. The
+#     stock Nixpacks Python preset doesn't install those, and the lazy
+#     import in services/pdf_service.py only buys us a clean app boot —
+#     we still need the .so files on PATH for the actual PDF render.
+#
+#  2. document_parser.py uses pytesseract (OCR) and pdf2image (Poppler).
+#     Both are runtime system binaries, not Python wheels.
+#
+#  3. voice_service.py downloads OGG/Opus voice notes from Gupshup; if
+#     we ever decode locally we'll need ffmpeg. Adding it now is cheap.
+#
+# Nixpacks resolves these names against nixpkgs.
+
+[phases.setup]
+# nixPkgs are baked into the build image and the runtime image.
+nixPkgs = [
+  "python311",
+  "tesseract",        # CLI used by pytesseract
+  "poppler_utils",    # provides pdftoppm — used by pdf2image
+  "ffmpeg-headless",  # voice / audio handling
+  # WeasyPrint runtime stack
+  "gtk3",
+  "glib",
+  "cairo",
+  "pango",
+  "gdk-pixbuf",
+  "harfbuzz",
+  "fontconfig",
+  "fribidi",
+  "freetype",
+  # System fonts so generated PDFs aren't all squares
+  "dejavu_fonts",
+  "liberation_ttf",
+]
+
+# Apt packages — Nixpacks layers these on top of the Nix store on
+# Debian-based runners. Most of what we need is already in nixPkgs above;
+# the apt list below is a belt-and-braces fallback for any image where
+# the Nix lookup misses.
+[phases.setup.aptPkgs]
+aptPkgs = [
+  "tesseract-ocr",
+  "poppler-utils",
+  "ffmpeg",
+  "libgtk-3-0",
+  "libgobject-2.0-0",
+  "libcairo2",
+  "libpango-1.0-0",
+  "libpangocairo-1.0-0",
+  "libgdk-pixbuf-2.0-0",
+  "libharfbuzz0b",
+  "libfribidi0",
+  "libfontconfig1",
+  "fonts-dejavu-core",
+  "fonts-liberation",
+]
+
+[phases.install]
+# Pip install all Python deps. Pinned versions live in requirements.txt.
+cmds = [
+  "python -m venv --copies /opt/venv",
+  ". /opt/venv/bin/activate && pip install --upgrade pip",
+  ". /opt/venv/bin/activate && pip install -r requirements.txt",
+]
+
+[phases.build]
+# No build step — the project ships as plain Python.
+cmds = []
+
+[start]
+# Runtime entrypoint. Honours $PORT (Railway-injected) and $WEB_CONCURRENCY.
+cmd = "uvicorn main:app --host 0.0.0.0 --port $PORT --workers ${WEB_CONCURRENCY:-2} --proxy-headers --forwarded-allow-ips='*'"
+
+[variables]
+# Make the venv visible to subsequent phases and the runtime.
+NIXPACKS_PATH       = "/opt/venv/bin:$NIXPACKS_PATH"
+PYTHONUNBUFFERED    = "1"
+PIP_DISABLE_PIP_VERSION_CHECK = "1"
