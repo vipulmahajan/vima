@@ -326,11 +326,10 @@ async def dashboard_page(
     name = user.get("name") or email.split("@")[0]
     initials = (name[:2]).upper()
 
-    # Subscription status
+    # Subscription status — web users are keyed by email in the payments table
     from models.database import has_active_subscription
     import datetime as _dt2
-    phone = user.get("phone") or email
-    is_active = await has_active_subscription(phone)
+    is_active = await has_active_subscription(email)
 
     # Days remaining (fetch from payments table)
     days_remaining = 0
@@ -763,29 +762,26 @@ async def api_payment_verify(
         log.warning("payment.verify sig mismatch user=%s", _mask_email(user["email"]))
         raise HTTPException(status_code=400, detail="Payment signature verification failed.")
 
-    # If a real phone was provided, attach it to the user record first (FK needed).
+    # Attach phone to the user record if provided (optional — collected at checkout).
     if phone:
         await upsert_user(email=user["email"], phone=phone)
 
-    # Record the payment intent and mark active. The payments table FK references
-    # users.phone — for phone-less web users we skip the DB row and rely on the
-    # Razorpay dashboard; for users who provided a phone we record normally.
-    if phone:
-        await record_payment_intent(
-            phone        = phone,
-            amount_paise = settings.price_subscription_paise,
-            link_id      = order_id,
-            payment_type = "access_pass",
-        )
-        await mark_subscription_active(
-            phone               = phone,
-            duration_days       = 60,
-            razorpay_payment_id = payment_id,
-            link_id             = order_id,
-            payment_type        = "access_pass",
-        )
+    # Always record payment keyed by email — no phone FK required in new schema.
+    await record_payment_intent(
+        user_id      = user["email"],
+        amount_paise = settings.price_subscription_paise,
+        link_id      = order_id,
+        payment_type = "access_pass",
+    )
+    await mark_subscription_active(
+        user_id             = user["email"],
+        duration_days       = 60,
+        razorpay_payment_id = payment_id,
+        link_id             = order_id,
+        payment_type        = "access_pass",
+    )
 
-    user_key = phone or user["email"]
+    user_key = user["email"]
 
     log.info("payment.verify activated user=%s payment=%s", _mask_email(user["email"]), payment_id)
 
@@ -1250,7 +1246,7 @@ async def api_admin_activate_user(request: Request) -> JSONResponse:
 
     import datetime as _dt
     await mark_subscription_active(
-        phone               = email,
+        user_id             = email,
         duration_days       = duration,
         razorpay_payment_id = None,
         link_id             = None,
@@ -1271,48 +1267,45 @@ async def api_admin_activate_user(request: Request) -> JSONResponse:
     return JSONResponse({"success": True, "user": email, "period_end": period_end})
 
 
-async def _resume_pending_output(phone: str) -> None:
+async def _resume_pending_output(user_id: str) -> None:
     """If the user has a flow paused awaiting payment, resume it now."""
-    state = await get_user_state(phone)
+    state = await get_user_state(user_id)
     data  = state.get("data") or {}
     pending = data.get("pending_action")
     if not pending:
         return
 
-    # Lazy-import to avoid circular imports at module load.
     from flows import resume    as resume_flow
     from flows import interview as interview_flow
 
-    log.info("Resuming pending output for %s: %s", _mask(phone), pending)
+    log.info("Resuming pending output for %s: %s", _mask(user_id), pending)
 
-    # Build a synthetic empty inbound message — handlers expect one.
     fake_msg: dict[str, Any] = {"type": "text", "text": ""}
 
     reply: Optional[dict[str, Any]] = None
 
     if pending == "resume_proc2":
         await upsert_user_state(
-            phone, {"flow": "resume", "resume_step": resume_flow.RESUME_PROC2}
+            user_id, {"flow": "resume", "resume_step": resume_flow.RESUME_PROC2}
         )
-        st = await get_user_state(phone)
-        reply = await resume_flow.handle(phone, fake_msg, st)
+        st = await get_user_state(user_id)
+        reply = await resume_flow.handle(user_id, fake_msg, st)
 
     elif pending == "interview_prep":
         await upsert_user_state(
-            phone, {"flow": "interview", "interview_step": interview_flow.PREP_GENERATING}
+            user_id, {"flow": "interview", "interview_step": interview_flow.PREP_GENERATING}
         )
-        st = await get_user_state(phone)
-        reply = await interview_flow.handle(phone, fake_msg, st)
+        st = await get_user_state(user_id)
+        reply = await interview_flow.handle(user_id, fake_msg, st)
 
     else:
-        log.warning("Unknown pending_action %r for %s", pending, _mask(phone))
+        log.warning("Unknown pending_action %r for %s", pending, _mask(user_id))
         return
 
-    # Clear the pending marker now that we've kicked off the resumption.
-    await merge_user_state_data(phone, {"pending_action": None})
+    await merge_user_state_data(user_id, {"pending_action": None})
 
     if reply is not None:
-        messenger = await get_messenger(phone)
+        messenger = await get_messenger(user_id)
         await messenger.send(reply)
 
 

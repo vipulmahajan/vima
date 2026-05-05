@@ -1,15 +1,18 @@
 """Supabase-backed persistence layer.
 
-Tables (see schema.sql or Supabase dashboard):
-  - users            (phone PK, name, created_at, locale)
-  - conversations    (id, phone, role, content, created_at)
-  - user_state       (phone PK, flow, resume_step, interview_step, data jsonb)
-  - payments         (id, phone, amount_paise, link_id, payment_type,
-                      razorpay_payment_id, status, period_end, created_at)
-  - artifacts        (id, phone, kind, storage_path, created_at)
+Tables (see schema_v2.sql or Supabase dashboard):
+  - users            (id uuid PK, phone unique nullable, email unique nullable,
+                      name, google_id, avatar_url, channel, locale)
+  - conversations    (id, user_id TEXT — email or phone, no FK, role, content, created_at)
+  - user_state       (user_id TEXT PK — email or phone, no FK, flow, resume_step,
+                      interview_step, data jsonb)
+  - payments         (id, user_id TEXT — email or phone, no FK, amount_paise, link_id,
+                      payment_type, razorpay_payment_id, status, period_end)
+  - artifacts        (id, user_id TEXT — email or phone, no FK, kind, storage_path, version)
+  - sessions         (id, user_id TEXT — email, jwt_token_hash, expires_at)
+  - user_documents   (id, user_id TEXT — email, type, filename, mime_type, raw_text)
 
-This module exposes coroutine helpers used by flows/ and services/. For now
-the supabase-py client is sync; we wrap calls in `asyncio.to_thread`.
+user_id is always: email for web users, E.164 phone for WhatsApp users.
 """
 
 import asyncio
@@ -23,8 +26,6 @@ from config import settings
 log = logging.getLogger(__name__)
 
 _client: Optional[Client] = None
-# Tiny in-process fallback so the state machine still works for local dev
-# when Supabase isn't configured. Production deploys with real creds skip this.
 _LOCAL_USERS:        dict[str, dict[str, Any]] = {}
 _LOCAL_USER_STATE:   dict[str, dict[str, Any]] = {}
 _LOCAL_PAYMENTS:     list[dict[str, Any]]      = []
@@ -49,19 +50,15 @@ def _get_client() -> Optional[Client]:
 
 
 async def init_db() -> None:
-    """Eagerly construct the client and verify reachability."""
-    # TODO: run a trivial query to fail fast on bad creds.
     _get_client()
 
 
 async def close_db() -> None:
-    """Tear-down hook for app shutdown."""
-    # supabase-py has no explicit close; nothing to do today.
     return
 
 
 # ---------------------------------------------------------------------------
-# Users + conversation
+# Users
 # ---------------------------------------------------------------------------
 
 
@@ -75,14 +72,12 @@ async def upsert_user(
 ) -> None:
     """Insert or update a user row.
 
-    Web users are identified by email; WhatsApp users by phone. At least one
-    of phone or email must be provided. `channel` is "web" or "whatsapp".
-    For existing rows, channel is not changed — only set on first insert.
+    Web users are looked up by email; WhatsApp users by phone. At least one
+    of phone or email must be provided. channel is 'web' or 'whatsapp'.
     """
     if not phone and not email:
         raise ValueError("upsert_user requires at least phone or email")
 
-    # Build update payload (fields that are always safe to overwrite on update).
     update_fields: dict[str, Any] = {}
     if name is not None:
         update_fields["name"] = name
@@ -98,7 +93,7 @@ async def upsert_user(
                 "phone": phone,
                 "email": email,
                 "google_id": google_id,
-                "channel": channel or "web",
+                "channel": channel or ("web" if email else "whatsapp"),
             }
             _LOCAL_USERS[key] = existing
         existing.update({k: v for k, v in update_fields.items() if v is not None})
@@ -107,27 +102,30 @@ async def upsert_user(
         return
 
     def _do() -> None:
-        # Determine the lookup key and build payloads.
         if email:
-            lookup_col = "email"
-            lookup_val = email
+            lookup_col, lookup_val = "email", email
         else:
-            lookup_col = "phone"
-            lookup_val = phone
+            lookup_col, lookup_val = "phone", phone
 
         existing_resp = (
             client.table("users")
-            .select("phone, email, channel")
+            .select("id, phone, email, channel")
             .eq(lookup_col, lookup_val)
             .limit(1)
             .execute()
         )
 
         if existing_resp.data:
-            if update_fields:
-                client.table("users").update(update_fields).eq(lookup_col, lookup_val).execute()
+            patch: dict[str, Any] = dict(update_fields)
+            # Attach a phone to an existing web user (collected at checkout).
+            if phone and not existing_resp.data[0].get("phone"):
+                patch["phone"] = phone
+            if patch:
+                client.table("users").update(patch).eq(lookup_col, lookup_val).execute()
         else:
-            insert_payload: dict[str, Any] = {}
+            insert_payload: dict[str, Any] = {
+                "channel": channel or ("web" if email else "whatsapp"),
+            }
             if phone:
                 insert_payload["phone"] = phone
             if email:
@@ -138,21 +136,9 @@ async def upsert_user(
                 insert_payload["name"] = name
             if avatar_url:
                 insert_payload["avatar_url"] = avatar_url
-            insert_payload["channel"] = channel or "web"
-            # Web users without a phone need a synthetic PK; use email as phone
-            # placeholder so the NOT NULL constraint is satisfied on old schemas.
-            # New schema has phone nullable, so only add if present.
-            if not insert_payload.get("phone") and not _email_pk_schema():
-                insert_payload["phone"] = email  # fallback for old schema
             client.table("users").insert(insert_payload).execute()
 
     await asyncio.to_thread(_do)
-
-
-def _email_pk_schema() -> bool:
-    """Return True if the users table has a nullable phone column (new schema)."""
-    # We optimistically assume new schema. If insert fails, the caller handles it.
-    return True
 
 
 async def get_user_by_email(email: str) -> Optional[dict[str, Any]]:
@@ -175,63 +161,54 @@ async def get_user_by_email(email: str) -> Optional[dict[str, Any]]:
 
 
 async def get_user_channel(user_id: str) -> Optional[str]:
-    """Return the user's channel ('web' or 'whatsapp'), or None if unknown.
-
-    ``user_id`` may be a phone number (WhatsApp) or an email address (web).
-    We try phone first; if that returns nothing and the value looks like an
-    email we try the email column.
-    """
+    """Return 'web' or 'whatsapp' for the given user_id (email or phone)."""
     client = _get_client()
     if client is None:
         row = _LOCAL_USERS.get(user_id) or {}
         return row.get("channel")
 
     def _do() -> Optional[str]:
-        # Try phone column first (covers WhatsApp users and legacy web users).
-        resp = (
-            client.table("users")
-            .select("channel")
-            .eq("phone", user_id)
-            .maybe_single()
-            .execute()
-        )
-        if resp.data:
-            return resp.data.get("channel")
-        # Fall back to email column (web / Google Sign-In users).
         if "@" in user_id:
-            resp2 = (
+            resp = (
                 client.table("users")
                 .select("channel")
                 .eq("email", user_id)
                 .maybe_single()
                 .execute()
             )
-            if resp2.data:
-                return resp2.data.get("channel")
-        return None
+        else:
+            resp = (
+                client.table("users")
+                .select("channel")
+                .eq("phone", user_id)
+                .maybe_single()
+                .execute()
+            )
+        return (resp.data or {}).get("channel")
 
     return await asyncio.to_thread(_do)
 
 
-async def append_conversation(phone: str, role: str, content: str) -> None:
+# ---------------------------------------------------------------------------
+# Conversations
+# ---------------------------------------------------------------------------
+
+
+async def append_conversation(user_id: str, role: str, content: str) -> None:
     client = _get_client()
     if client is None:
-        return  # not stored locally — only needed for Claude context retrieval
+        return
 
     def _do() -> None:
         client.table("conversations").insert(
-            {"phone": phone, "role": role, "content": content}
+            {"user_id": user_id, "role": role, "content": content}
         ).execute()
 
     await asyncio.to_thread(_do)
 
 
 async def recent_conversation(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
-    """Return the most recent ``limit`` conversation turns for a user.
-
-    ``user_id`` may be a phone (WhatsApp) or email (web). For web users the
-    conversations table stores the email in the ``phone`` column (text field).
-    """
+    """Return the most recent ``limit`` turns for a user (email or phone)."""
     client = _get_client()
     if client is None:
         return []
@@ -241,7 +218,7 @@ async def recent_conversation(user_id: str, limit: int = 20) -> list[dict[str, A
             client
             .table("conversations")
             .select("role, content, created_at")
-            .eq("phone", user_id)
+            .eq("user_id", user_id)
             .order("created_at", desc=True)
             .limit(limit)
             .execute()
@@ -256,17 +233,17 @@ async def recent_conversation(user_id: str, limit: int = 20) -> list[dict[str, A
 # ---------------------------------------------------------------------------
 
 
-async def get_user_state(phone: str) -> dict[str, Any]:
+async def get_user_state(user_id: str) -> dict[str, Any]:
     client = _get_client()
     if client is None:
-        return dict(_LOCAL_USER_STATE.get(phone, {}))
+        return dict(_LOCAL_USER_STATE.get(user_id, {}))
 
     def _do() -> dict[str, Any]:
         resp = (
             client
             .table("user_state")
             .select("*")
-            .eq("phone", phone)
+            .eq("user_id", user_id)
             .maybe_single()
             .execute()
         )
@@ -275,32 +252,29 @@ async def get_user_state(phone: str) -> dict[str, Any]:
     return await asyncio.to_thread(_do)
 
 
-async def upsert_user_state(phone: str, patch: dict[str, Any]) -> None:
+async def upsert_user_state(user_id: str, patch: dict[str, Any]) -> None:
     client = _get_client()
     if client is None:
         import datetime
-        existing = _LOCAL_USER_STATE.get(phone, {"phone": phone})
+        existing = _LOCAL_USER_STATE.get(user_id, {"user_id": user_id})
         existing.update(patch)
         existing["updated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        _LOCAL_USER_STATE[phone] = existing
+        _LOCAL_USER_STATE[user_id] = existing
         return
 
     def _do() -> None:
-        payload = {"phone": phone, **patch}
-        client.table("user_state").upsert(payload, on_conflict="phone").execute()
+        payload = {"user_id": user_id, **patch}
+        client.table("user_state").upsert(payload, on_conflict="user_id").execute()
 
     await asyncio.to_thread(_do)
 
 
-async def merge_user_state_data(phone: str, patch: dict[str, Any]) -> dict[str, Any]:
-    """Shallow-merge `patch` into user_state.data (jsonb) and persist.
-
-    Returns the merged data dict.
-    """
-    current = await get_user_state(phone)
+async def merge_user_state_data(user_id: str, patch: dict[str, Any]) -> dict[str, Any]:
+    """Shallow-merge ``patch`` into user_state.data (jsonb) and persist."""
+    current = await get_user_state(user_id)
     data = dict(current.get("data") or {})
     data.update(patch)
-    await upsert_user_state(phone, {"data": data})
+    await upsert_user_state(user_id, {"data": data})
     return data
 
 
@@ -310,11 +284,7 @@ async def merge_user_state_data(phone: str, patch: dict[str, Any]) -> dict[str, 
 
 
 async def list_active_user_states() -> list[dict[str, Any]]:
-    """Return every user_state row. Used by the scheduled nudge / archive loop.
-
-    For Supabase: select *. For in-memory: dump the dict. Either way the
-    caller is responsible for filtering on flow / step / updated_at.
-    """
+    """Return every user_state row for the nudge / archive loop."""
     client = _get_client()
     if client is None:
         return [dict(s) for s in _LOCAL_USER_STATE.values()]
@@ -326,32 +296,32 @@ async def list_active_user_states() -> list[dict[str, Any]]:
     return await asyncio.to_thread(_do)
 
 
-async def archive_user_state(phone: str) -> None:
-    """Move the current state under data.archived_state and reset to idle.
-
-    The next message from this user will land in the menu flow.
-    """
-    state = await get_user_state(phone)
+async def archive_user_state(user_id: str) -> None:
+    """Snapshot current state into data.archived_state and reset to idle."""
+    state = await get_user_state(user_id)
     if not state:
         return
     snapshot = {k: state.get(k) for k in
                 ("flow", "resume_step", "interview_step", "data")}
-    new_data = {"archived_state": snapshot}
 
-    log.info("archiving stale state phone=%s flow=%s", _mask(phone), state.get("flow"))
+    log.info("archiving stale state user_id=%s flow=%s", _mask(user_id), state.get("flow"))
 
-    await upsert_user_state(phone, {
-        "flow":            "idle",
-        "resume_step":     "welcome",
-        "interview_step":  "welcome",
-        "data":            new_data,
+    await upsert_user_state(user_id, {
+        "flow":           "idle",
+        "resume_step":    "welcome",
+        "interview_step": "welcome",
+        "data":           {"archived_state": snapshot},
     })
 
 
-def _mask(phone: str) -> str:
-    if not phone or len(phone) < 6:
+def _mask(value: str) -> str:
+    """Mask a phone or email for safe logging."""
+    if not value or len(value) < 6:
         return "***"
-    return f"{phone[:5]}****{phone[-3:]}"
+    if "@" in value:
+        local, _, domain = value.partition("@")
+        return f"{local[:2]}***@{domain}"
+    return f"{value[:5]}****{value[-3:]}"
 
 
 # ---------------------------------------------------------------------------
@@ -360,31 +330,29 @@ def _mask(phone: str) -> str:
 
 
 async def record_payment_intent(
-    phone: str,
+    user_id: str,
     amount_paise: int,
     link_id: str,
     payment_type: str = "access_pass",
 ) -> None:
-    """Insert a `created`-status row for a freshly-issued payment link.
+    """Insert a ``created``-status row for a freshly-issued payment link.
 
-    `payment_type` is one of:
-      - "access_pass"      — one-time 60-day access pass (current default)
-      - "monthly_renewal"  — recurring monthly subscription (future)
+    ``user_id`` is email for web users, E.164 phone for WhatsApp users.
     """
     client = _get_client()
     if client is None:
         _LOCAL_PAYMENTS.append({
-            "phone":         phone,
-            "amount_paise":  amount_paise,
-            "link_id":       link_id,
-            "payment_type":  payment_type,
-            "status":        "created",
+            "user_id":      user_id,
+            "amount_paise": amount_paise,
+            "link_id":      link_id,
+            "payment_type": payment_type,
+            "status":       "created",
         })
         return
 
     def _do() -> None:
         client.table("payments").insert({
-            "phone":        phone,
+            "user_id":      user_id,
             "amount_paise": amount_paise,
             "link_id":      link_id,
             "payment_type": payment_type,
@@ -395,20 +363,16 @@ async def record_payment_intent(
 
 
 async def mark_subscription_active(
-    phone: str,
+    user_id: str,
     duration_days: int = 30,
     razorpay_payment_id: Optional[str] = None,
     link_id: Optional[str] = None,
     payment_type: Optional[str] = None,
 ) -> None:
-    """Mark the latest payment as paid and set period_end to +`duration_days`.
+    """Mark the matching payment row as paid and set period_end to +duration_days.
 
-    For the 60-day access pass, callers pass ``duration_days=60``. The default
-    of 30 is preserved for backwards compatibility with the older monthly
-    code path.
-
-    If `link_id` is provided, the matching payment row is updated; otherwise
-    the most recent ``status='created'`` row for the phone is used.
+    If ``link_id`` is provided, the matching payment row is updated; otherwise
+    the most recent ``status='created'`` row for the user is used.
     """
     import datetime
 
@@ -425,7 +389,6 @@ async def mark_subscription_active(
 
     client = _get_client()
     if client is None:
-        # Prefer a row matched by link_id; fall back to the latest created.
         target = None
         if link_id:
             for row in _LOCAL_PAYMENTS:
@@ -434,7 +397,7 @@ async def mark_subscription_active(
                     break
         if target is None:
             for row in reversed(_LOCAL_PAYMENTS):
-                if row.get("phone") == phone and row.get("status") == "created":
+                if row.get("user_id") == user_id and row.get("status") == "created":
                     target = row
                     break
         if target is not None:
@@ -442,7 +405,7 @@ async def mark_subscription_active(
         return
 
     def _do() -> None:
-        q = client.table("payments").update(update_fields).eq("phone", phone)
+        q = client.table("payments").update(update_fields).eq("user_id", user_id)
         if link_id:
             q = q.eq("link_id", link_id)
         else:
@@ -481,7 +444,7 @@ async def find_payment_by_link_id(link_id: str) -> Optional[dict[str, Any]]:
     return await asyncio.to_thread(_do)
 
 
-async def has_active_subscription(phone: str) -> bool:
+async def has_active_subscription(user_id: str) -> bool:
     """Return True if there is a paid subscription row with period_end in the future."""
     import datetime
 
@@ -490,7 +453,7 @@ async def has_active_subscription(phone: str) -> bool:
     client = _get_client()
     if client is None:
         return any(
-            row["phone"] == phone
+            row["user_id"] == user_id
             and row.get("status") == "paid"
             and (row.get("period_end") or "") > now
             for row in _LOCAL_PAYMENTS
@@ -501,7 +464,7 @@ async def has_active_subscription(phone: str) -> bool:
             client
             .table("payments")
             .select("id")
-            .eq("phone", phone)
+            .eq("user_id", user_id)
             .eq("status", "paid")
             .gt("period_end", now)
             .limit(1)
@@ -513,7 +476,25 @@ async def has_active_subscription(phone: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Artifacts (PDFs, audio, etc.)
+# Artifacts (PDFs, etc.)
+# ---------------------------------------------------------------------------
+
+
+async def record_artifact(user_id: str, kind: str, storage_path: str) -> None:
+    client = _get_client()
+    if client is None:
+        return
+
+    def _do() -> None:
+        client.table("artifacts").insert(
+            {"user_id": user_id, "kind": kind, "storage_path": storage_path}
+        ).execute()
+
+    await asyncio.to_thread(_do)
+
+
+# ---------------------------------------------------------------------------
+# User documents (uploaded files)
 # ---------------------------------------------------------------------------
 
 
@@ -526,7 +507,7 @@ async def store_user_document(
 ) -> None:
     """Insert a row into user_documents for a web upload.
 
-    ``user_id`` is the user's email. ``doc_type`` is one of 'resume', 'jd', 'other'.
+    ``user_id`` is the user's email. ``doc_type`` is 'resume', 'jd', or 'other'.
     """
     client = _get_client()
     if client is None:
@@ -540,18 +521,5 @@ async def store_user_document(
             "mime_type": mime_type,
             "raw_text":  raw_text,
         }).execute()
-
-    await asyncio.to_thread(_do)
-
-
-async def record_artifact(phone: str, kind: str, storage_path: str) -> None:
-    client = _get_client()
-    if client is None:
-        return
-
-    def _do() -> None:
-        client.table("artifacts").insert(
-            {"phone": phone, "kind": kind, "storage_path": storage_path}
-        ).execute()
 
     await asyncio.to_thread(_do)

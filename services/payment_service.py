@@ -130,7 +130,7 @@ class PaymentService:
 
         # Record the intent regardless — gives us a paper trail in the DB.
         await record_payment_intent(
-            phone        = user_phone,
+            user_id      = user_phone,
             amount_paise = amount_paise,
             link_id      = link_id,
             payment_type = PAYMENT_TYPE_ACCESS_PASS,
@@ -165,7 +165,7 @@ class PaymentService:
     ) -> dict[str, Any]:
         """Mark the access pass active and return the payment row."""
         await mark_subscription_active(
-            phone               = user_phone,
+            user_id             = user_phone,
             duration_days       = ACCESS_PASS_DURATION_DAYS,
             razorpay_payment_id = razorpay_payment_id,
             link_id             = payment_link_id,

@@ -130,22 +130,22 @@ schema.sql           Supabase schema — run in the SQL editor. Fully idempotent
 ## Database tables
 
 ```
-users           phone PK (nullable for web), email unique, google_id, avatar_url, name, channel, locale
-conversations   id, phone TEXT (WhatsApp E.164 or email — no FK), role, content, created_at
-user_state      phone PK TEXT (E.164 or email — no FK), flow, resume_step, interview_step, data jsonb
-payments        id, phone references users(phone), amount_paise, link_id, razorpay_payment_id,
-                payment_type, status, period_end, created_at
-artifacts       id, phone references users(phone), kind, storage_path, version, created_at
+users           id uuid PK, phone unique nullable (E.164), email unique nullable,
+                google_id, avatar_url, name, channel, locale
+conversations   id, user_id TEXT (email or phone — no FK), role, content, created_at
+user_state      user_id TEXT PK (email or phone — no FK), flow, resume_step, interview_step, data jsonb
+payments        id, user_id TEXT (email or phone — no FK), amount_paise, link_id,
+                razorpay_payment_id, payment_type, status, period_end, created_at
+artifacts       id, user_id TEXT (email or phone — no FK), kind, storage_path, version, created_at
 sessions        id, user_id TEXT (email), jwt_token_hash, expires_at
 user_documents  id, user_id TEXT (email), type, filename, mime_type, raw_text, created_at
 otp_codes       id, phone, code_hash, expires_at, attempts, verified  [legacy, unused]
 ```
 
-**Important:** `conversations` and `user_state` have no FK to `users.phone` — the migration
-`DO $$ ... DROP CONSTRAINT ... $$` in `schema.sql` removed it so email addresses work as keys.
-The `payments` and `artifacts` tables still FK to `users.phone`, so web-only users (no phone)
-cannot have rows in those tables. At `/api/payment/verify` time, a phone is collected via
-the Razorpay checkout form and used to upsert the user before writing payment rows.
+**Key invariant:** `user_id` in all tables is always the user's email for web users, or E.164
+phone for WhatsApp users. No FK to `users` — both channels can write payment/state rows without
+a users row existing. Web payments are recorded with email as `user_id`; phone is optional
+(collected at Razorpay checkout and attached to the `users` row via `upsert_user`).
 
 ---
 
@@ -163,9 +163,8 @@ the Razorpay checkout form and used to upsert the user before writing payment ro
 
 ## Subscription gating
 
-`has_active_subscription(phone_or_email)` in `models/database.py` queries `payments` for a `paid`
-row with `period_end` in the future. For web users who haven't given a phone yet, the subscription
-is looked up by email (stored as the `phone` column value in payments after the verify step).
+`has_active_subscription(user_id)` in `models/database.py` queries `payments` for a `paid` row
+with `period_end` in the future. `user_id` is always email for web users, E.164 phone for WhatsApp.
 
 `_resume_pending_output(user_key)` in `main.py` reads `user_state.data.pending_action` and
 re-enters the blocked flow step (either `resume_proc2` or `interview_prep`). Called from:
@@ -238,9 +237,8 @@ Calls `mark_subscription_active(phone=email)` + `_resume_pending_output(email)`.
 - Railway deployment config (`railway.toml`, `nixpacks.toml`, `DEPLOY.md`)
 - Silent-user nudge + 7-day archive background loop
 
-## Known schema issues to apply before go-live
+## Schema
 
-Run the full `schema.sql` in the Supabase SQL editor. The idempotent migration blocks handle:
-- Adding `email`, `google_id`, `avatar_url` columns to `users`
-- Removing FK constraints from `conversations` and `user_state` so email keys work
-- Creating `sessions` and `user_documents` tables if they don't exist yet
+Run `schema_v2.sql` in the Supabase SQL editor (safe to re-run — drops and recreates all tables).
+The v2 schema is a clean slate: `users.id` is a uuid PK, phone and email are both nullable/unique,
+and all related tables use a `user_id TEXT` column (no FK) that accepts either email or phone.
