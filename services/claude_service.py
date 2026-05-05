@@ -349,15 +349,10 @@ class ClaudeService:
             ],
             messages=[
                 {"role": "user", "content": user_payload},
-                # Pre-fill the assistant turn to lock JSON-only output.
-                {"role": "assistant", "content": "{"},
             ],
         )
         raw = _first_text(response)
-
-        # We pre-filled "{" so Claude's response is the rest of the JSON object.
-        json_text = "{" + raw if not raw.lstrip().startswith("{") else raw
-        parsed = _safe_parse_json(json_text)
+        parsed = _safe_parse_json(raw)
         if not parsed:
             log.warning("Could not parse resume JSON; returning fallback skeleton.")
             return _resume_fallback(resume_text, current_role_target)
@@ -519,14 +514,11 @@ class ClaudeService:
                  "cache_control": {"type": "ephemeral"}},
             ],
             messages=[
-                {"role": "user",      "content": user_payload},
-                {"role": "assistant", "content": "{"},
+                {"role": "user", "content": user_payload},
             ],
         )
         raw = _first_text(response)
-
-        json_text = "{" + raw if not raw.lstrip().startswith("{") else raw
-        parsed = _safe_parse_json(json_text)
+        parsed = _safe_parse_json(raw)
         if not parsed:
             log.warning("Could not parse prep JSON; returning fallback skeleton.")
             return _interview_prep_fallback(company, target_role, round_label)
@@ -725,7 +717,9 @@ def _build_resume_user_payload(**fields: Any) -> str:
 
     sections += [
         "",
-        "Return ONLY the JSON object now, starting with { and ending with }.",
+        "IMPORTANT: Respond with ONLY a valid JSON object matching RESUME_SCHEMA. "
+        "No preamble, no explanation, no markdown fences. "
+        "Start your response directly with { and end with }.",
     ]
     return "\n".join(sections)
 
@@ -902,7 +896,9 @@ def _build_interview_prep_payload(**fields: Any) -> str:
 
     sections += [
         "",
-        "Return ONLY the JSON object now, starting with { and ending with }.",
+        "IMPORTANT: Respond with ONLY a valid JSON object matching PREP_SCHEMA. "
+        "No preamble, no explanation, no markdown fences. "
+        "Start your response directly with { and end with }.",
     ]
     return "\n".join(sections)
 
