@@ -41,6 +41,7 @@ from services.claude_service import (
     CLAUDE_EXHAUSTED_MSG,
 )
 from services.document_parser import extract_text
+from config import settings
 from services.payment_service import PaymentService
 from services.pdf_service import render_resume_pdf, render_resume_docx
 from services.research_service import research_role
@@ -113,6 +114,8 @@ async def handle(
         return await _handle_proc2(sender, message, text)
 
     if step == AWAITING_PAYMENT:
+        if text.lower().strip() == "retry":
+            return _text(sender, await _payment_gate_body(sender))
         return _text(sender,
             "I'm waiting for your payment to come through — once it does, "
             "your resume will arrive automatically. If you've already paid, "
@@ -499,30 +502,10 @@ async def _handle_proc2(
     """Acknowledge + run the resume generation + delivery pipeline."""
     payments = PaymentService()
     if not await payments.is_subscribed(sender):
-        # Look up the user's name (best-effort) for the Razorpay customer object.
-        state_now = await get_user_state(sender)
-        user_name = (state_now.get("data") or {}).get("user_name")
-
-        link = await payments.create_access_pass_link(sender, user_name=user_name)
-
         # Park the flow until the webhook fires.
         await merge_user_state_data(sender, {"pending_action": "resume_proc2"})
         await upsert_user_state(sender, {"resume_step": AWAITING_PAYMENT})
-
-        body = (
-            "Your tailored output is ready to be created.\n\n"
-            "Unlock *30+30 days of access for ₹1,799* — covers everything I "
-            "can help you with: resume rebuilds, interview prep, and "
-            "unlimited iterations."
-        )
-        if link:
-            body += f"\n\nPay here: {link}"
-        else:
-            body += (
-                "\n\nThe payment link couldn't be created right now — reply "
-                "*retry* in a minute and I'll try again."
-            )
-        return _text(sender, body)
+        return _text(sender, await _payment_gate_body(sender))
 
     # Ack first.
     messenger = await get_messenger(sender)
@@ -727,6 +710,37 @@ def _resume_done(sender: str) -> dict[str, Any]:
     return _text(sender,
         "Your resume is delivered. Reply *interview* to run a mock interview, "
         "or *menu* to start over."
+    )
+
+
+# ── Payment gate ────────────────────────────────────────────────────────────
+
+async def _payment_gate_body(sender: str) -> str:
+    """Return the payment prompt text, using a direct link when configured."""
+    body = (
+        "Your tailored output is ready to be created.\n\n"
+        "Unlock *60 days of access for ₹1,799* — covers everything I "
+        "can help you with: resume rebuilds, interview prep, and "
+        "unlimited iterations."
+    )
+    direct = (settings.razorpay_payment_link or "").strip()
+    if direct:
+        return body + f"\n\nPay here: {direct}"
+
+    # No direct link configured — try the Razorpay API.
+    try:
+        state_now = await get_user_state(sender)
+        user_name = (state_now.get("data") or {}).get("user_name")
+        payments = PaymentService()
+        link = await payments.create_access_pass_link(sender, user_name=user_name)
+    except Exception:  # noqa: BLE001
+        link = None
+
+    if link:
+        return body + f"\n\nPay here: {link}"
+    return body + (
+        "\n\nThe payment link couldn't be created right now — reply "
+        "*retry* in a minute and I'll try again."
     )
 
 

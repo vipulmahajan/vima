@@ -65,6 +65,7 @@
       background: var(--bg);
       position: relative;
       flex-shrink: 0;
+      overflow-x: hidden;
     }
 
     /* ── Header ──────────────────────────────────────────────────── */
@@ -213,8 +214,11 @@
       align-items: flex-end;
       gap: 8px;
       padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+      padding-right: max(12px, env(safe-area-inset-right, 12px));
       background: var(--surface);
       border-top: 1px solid var(--border);
+      box-sizing: border-box;
+      width: 100%;
     }
     .bar-icon-btn {
       width: 38px; height: 38px;
@@ -271,8 +275,8 @@
       max-width: 82%;
       margin-bottom: 4px;
     }
-    .msg-row.vima { align-self: flex-start; align-items: flex-start; }
-    .msg-row.user { align-self: flex-end;   align-items: flex-end; }
+    .msg-row.vima { align-self: flex-start; align-items: flex-start; margin-left: 0; }
+    .msg-row.user { align-self: flex-end;   align-items: flex-end;  margin-right: 4px; }
 
     .msg-sender {
       font-family: "Fraunces", Georgia, serif;
@@ -832,15 +836,15 @@
       </template>
     </button>
 
-    <!-- Mic — hold to record; spins while transcribing -->
+    <!-- Mic — click-to-toggle on desktop, hold-to-record on touch devices -->
     <button class="bar-icon-btn"
             :class="{ recording: isRecording, transcribing: isTranscribing }"
-            @mousedown.prevent="!isTranscribing && startRecording()"
-            @mouseup="!isTranscribing && stopRecording()"
-            @touchstart.prevent="!isTranscribing && startRecording()"
-            @touchend="!isTranscribing && stopRecording()"
-            @touchcancel="!isTranscribing && cancelRecording()"
-            :aria-label="isTranscribing ? 'Transcribing…' : isRecording ? 'Release to send voice' : 'Hold to record voice'">
+            @click.prevent="!isTouchDevice && !isTranscribing && toggleRecording()"
+            @mousedown.prevent="isTouchDevice ? null : null"
+            @touchstart.prevent="isTouchDevice && !isTranscribing && startRecording()"
+            @touchend="isTouchDevice && !isTranscribing && stopRecording()"
+            @touchcancel="isTouchDevice && !isTranscribing && cancelRecording()"
+            :aria-label="isTranscribing ? 'Transcribing…' : isRecording ? (isTouchDevice ? 'Release to send voice' : 'Click to stop recording') : (isTouchDevice ? 'Hold to record voice' : 'Click to record voice')">
       <template x-if="!isTranscribing">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -905,6 +909,7 @@ function vimaChat() {
     isUploading:   false,
     isTranscribing: false,
     progressLabel: '',
+    isTouchDevice: ('ontouchstart' in window),
 
     // Internals (not reactive — managed imperatively)
     _ws:                  null,
@@ -1494,6 +1499,14 @@ function vimaChat() {
     },
 
     // ── Voice recording ──────────────────────────────────────────────
+    toggleRecording() {
+      if (this.isRecording) {
+        this.stopRecording();
+      } else {
+        this.startRecording();
+      }
+    },
+
     startRecording() {
       if (this.isRecording) return;
       if (!navigator.mediaDevices || !window.MediaRecorder) {

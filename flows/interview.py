@@ -45,6 +45,7 @@ from services.claude_service import (
     ClaudeUnavailable,
     CLAUDE_EXHAUSTED_MSG,
 )
+from config import settings
 from services.payment_service import PaymentService
 from services.pdf_service import (
     render_interview_prep_pdf,
@@ -111,10 +112,14 @@ async def handle(
     if step == Q3_INTERVIEWER:    return await _handle_q3_interviewer(sender, message, text)
     if step == Q4_CONCERN:        return await _handle_q4_concern(sender, message, text)
     if step == PREP_GENERATING:   return await _handle_prep_generating(sender, message, text)
-    if step == AWAITING_PAYMENT:  return _text(sender,
-        "I'm waiting for your payment to come through — once it does, your "
-        "interview prep will arrive automatically. If you've already paid, "
-        "give it a minute and reply *menu* if nothing arrives.")
+    if step == AWAITING_PAYMENT:
+        if text.lower().strip() == "retry":
+            return _text(sender, await _payment_gate_body(sender))
+        return _text(sender,
+            "I'm waiting for your payment to come through — once it does, your "
+            "interview prep will arrive automatically. If you've already paid, "
+            "give it a minute and reply *menu* if nothing arrives."
+        )
     if step == PREP_DELIVERED:    return await _handle_prep_delivered(sender, message, text)
 
     if step == MOCK_IN_PROGRESS:  return await _handle_mock_turn(sender, message, text)
@@ -335,28 +340,9 @@ async def _handle_prep_generating(
     """Subscription gate, ack, generate prep kit, render PDF + DOCX, deliver both."""
     payments = PaymentService()
     if not await payments.is_subscribed(sender):
-        state_now = await get_user_state(sender)
-        user_name = (state_now.get("data") or {}).get("user_name")
-
-        link = await payments.create_access_pass_link(sender, user_name=user_name)
-
         await merge_user_state_data(sender, {"pending_action": "interview_prep"})
         await upsert_user_state(sender, {"interview_step": AWAITING_PAYMENT})
-
-        body = (
-            "Your tailored output is ready to be created.\n\n"
-            "Unlock *30+30 days of access for ₹1,799* — covers everything I "
-            "can help you with: resume rebuilds, interview prep, and "
-            "unlimited iterations."
-        )
-        if link:
-            body += f"\n\nPay here: {link}"
-        else:
-            body += (
-                "\n\nThe payment link couldn't be created right now — reply "
-                "*retry* in a minute and I'll try again."
-            )
-        return _text(sender, body)
+        return _text(sender, await _payment_gate_body(sender))
 
     # 1. Ack first so the user isn't waiting silent.
     messenger = await get_messenger(sender)
@@ -562,6 +548,36 @@ def _q4_body() -> str:
         "What's your *biggest concern* about this interview? "
         "It could be a topic gap, a tough question you're dreading, "
         "imposter syndrome, anything. One or two sentences is fine."
+    )
+
+
+# ── Payment gate ────────────────────────────────────────────────────────────
+
+async def _payment_gate_body(sender: str) -> str:
+    """Return the payment prompt text, using a direct link when configured."""
+    body = (
+        "Your tailored output is ready to be created.\n\n"
+        "Unlock *60 days of access for ₹1,799* — covers everything I "
+        "can help you with: resume rebuilds, interview prep, and "
+        "unlimited iterations."
+    )
+    direct = (settings.razorpay_payment_link or "").strip()
+    if direct:
+        return body + f"\n\nPay here: {direct}"
+
+    # No direct link configured — try the Razorpay API.
+    try:
+        state_now = await get_user_state(sender)
+        user_name = (state_now.get("data") or {}).get("user_name")
+        link = await PaymentService().create_access_pass_link(sender, user_name=user_name)
+    except Exception:  # noqa: BLE001
+        link = None
+
+    if link:
+        return body + f"\n\nPay here: {link}"
+    return body + (
+        "\n\nThe payment link couldn't be created right now — reply "
+        "*retry* in a minute and I'll try again."
     )
 
 
