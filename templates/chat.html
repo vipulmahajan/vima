@@ -24,7 +24,15 @@
       --border:   #E5DDD0;
     }
 
-    html, body { height: 100%; overflow: hidden; background: var(--bg); }
+    html { height: 100%; overflow: hidden; background: var(--bg); }
+    body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
 
     /* ── Desktop centering — feels like a phone on wide screens ─── */
     @media (min-width: 768px) {
@@ -52,10 +60,11 @@
       display: flex;
       flex-direction: column;
       height: 100%;
+      width: 100%;
       max-width: 480px;
-      margin: 0 auto;
       background: var(--bg);
       position: relative;
+      flex-shrink: 0;
     }
 
     /* ── Header ──────────────────────────────────────────────────── */

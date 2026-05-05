@@ -159,7 +159,7 @@ async def _check_and_nudge_silent_users() -> None:
     archive_count = 0
 
     for s in states:
-        phone = s.get("phone") or ""
+        phone = s.get("user_id") or ""
         if not phone:
             continue
 
@@ -342,7 +342,7 @@ async def dashboard_page(
                 resp = (
                     client.table("payments")
                     .select("period_end")
-                    .eq("phone", phone)
+                    .eq("user_id", email)
                     .eq("status", "paid")
                     .gt("period_end", now.isoformat())
                     .order("period_end", desc=True)
@@ -368,7 +368,7 @@ async def dashboard_page(
         resp = (
             c.table("artifacts")
             .select("kind, storage_path, created_at")
-            .eq("phone", phone)
+            .eq("user_id", email)
             .order("created_at", desc=True)
             .limit(20)
             .execute()

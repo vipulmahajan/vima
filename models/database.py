@@ -242,12 +242,14 @@ async def get_user_state(user_id: str) -> dict[str, Any]:
         resp = (
             client
             .table("user_state")
-            .select("*")
+            .select("user_id,flow,resume_step,interview_step,data,updated_at")
             .eq("user_id", user_id)
             .maybe_single()
             .execute()
         )
-        return resp.data or {}
+        if resp is None or resp.data is None:
+            return {}
+        return resp.data
 
     return await asyncio.to_thread(_do)
 
@@ -290,8 +292,10 @@ async def list_active_user_states() -> list[dict[str, Any]]:
         return [dict(s) for s in _LOCAL_USER_STATE.values()]
 
     def _do() -> list[dict[str, Any]]:
-        resp = client.table("user_state").select("*").execute()
-        return list(resp.data or [])
+        resp = client.table("user_state").select("user_id,flow,resume_step,interview_step,data,updated_at").execute()
+        if resp is None or resp.data is None:
+            return []
+        return list(resp.data)
 
     return await asyncio.to_thread(_do)
 
