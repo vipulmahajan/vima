@@ -113,6 +113,9 @@ async def handle(
     if step == Q4_CONCERN:        return await _handle_q4_concern(sender, message, text)
     if step == PREP_GENERATING:   return await _handle_prep_generating(sender, message, text)
     if step == AWAITING_PAYMENT:
+        if await PaymentService().is_subscribed(sender):
+            await upsert_user_state(sender, {"interview_step": PREP_GENERATING})
+            return await _handle_prep_generating(sender, message, text)
         if text.lower().strip() == "retry":
             return _text(sender, await _payment_gate_body(sender))
         return _text(sender,

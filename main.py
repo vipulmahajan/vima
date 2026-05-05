@@ -1265,21 +1265,34 @@ async def api_admin_activate_user(request: Request) -> JSONResponse:
 
     log.info("admin.activate email=%s duration=%d", _mask_email(email), duration)
 
+    resumed = False
     try:
-        await _resume_pending_output(email)
+        resumed = await _resume_pending_output(email)
     except Exception:  # noqa: BLE001
         log.exception("admin.activate resume_pending failed for %s", _mask_email(email))
+
+    if not resumed:
+        # No pending flow to resume (or resumption failed) — send the user a
+        # direct notification so they know their access is live.
+        try:
+            messenger = await get_messenger(email)
+            await messenger.send_text(
+                email,
+                "Your access is now active! Type *menu* to continue.",
+            )
+        except Exception:  # noqa: BLE001
+            log.warning("admin.activate fallback notify failed for %s", _mask_email(email))
 
     return JSONResponse({"success": True, "user": email, "period_end": period_end})
 
 
-async def _resume_pending_output(user_id: str) -> None:
-    """If the user has a flow paused awaiting payment, resume it now."""
+async def _resume_pending_output(user_id: str) -> bool:
+    """Resume a flow paused awaiting payment. Returns True if output was delivered."""
     state = await get_user_state(user_id)
     data  = state.get("data") or {}
     pending = data.get("pending_action")
     if not pending:
-        return
+        return False
 
     from flows import resume    as resume_flow
     from flows import interview as interview_flow
@@ -1306,13 +1319,15 @@ async def _resume_pending_output(user_id: str) -> None:
 
     else:
         log.warning("Unknown pending_action %r for %s", pending, _mask(user_id))
-        return
+        return False
 
     await merge_user_state_data(user_id, {"pending_action": None})
 
     if reply is not None:
         messenger = await get_messenger(user_id)
         await messenger.send(reply)
+
+    return True
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────

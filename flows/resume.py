@@ -114,6 +114,9 @@ async def handle(
         return await _handle_proc2(sender, message, text)
 
     if step == AWAITING_PAYMENT:
+        if await PaymentService().is_subscribed(sender):
+            await upsert_user_state(sender, {"resume_step": RESUME_PROC2})
+            return await _handle_proc2(sender, message, text)
         if text.lower().strip() == "retry":
             return _text(sender, await _payment_gate_body(sender))
         return _text(sender,
@@ -361,9 +364,15 @@ async def _handle_q3(
         await upsert_user_state(sender, {"resume_step": RESUME_Q4})
         return _ask_q4(sender)
 
+    # Plain-text paste path — accept any substantial block of text as the JD.
+    if len(text) >= 200:
+        await merge_user_state_data(sender, {"jd_source": "text", "jd_text": text})
+        await upsert_user_state(sender, {"resume_step": RESUME_Q4})
+        return _ask_q4(sender)
+
     return _text(sender,
-        "Share the *target JD* — either upload the JD as a PDF, or paste a "
-        "link to the job posting / LinkedIn job URL."
+        "Share the *target JD* — upload the JD as a PDF, paste the job posting "
+        "link, or paste the JD text directly."
     )
 
 
