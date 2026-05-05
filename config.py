@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     razorpay_key_id: str = Field(default="")
     razorpay_key_secret: str = Field(default="")
     razorpay_webhook_secret: str = Field(default="")
+    # TODO: remove once RAZORPAY_KEY_ID is a live key and Checkout JS is active.
+    # When set, the payment event carries this URL directly and the frontend
+    # opens it in a new tab instead of invoking Razorpay Checkout.
+    razorpay_payment_link: str = Field(default="")
 
     # --- Pricing (INR paise) ---
     price_subscription_paise: int = Field(default=179900)  # Rs.1799/month

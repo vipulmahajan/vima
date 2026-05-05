@@ -144,14 +144,17 @@ class WebMessenger(Messenger):
         amount: int,
         description: str,
     ) -> None:
-        # The frontend uses /api/payment/create-order to get a Razorpay order_id
-        # for Checkout. We still send a payment event so the card renders; the
-        # frontend calls the endpoint on "Pay Now" click.
+        # TODO: remove direct_link branch once RAZORPAY_KEY_ID is a live key
+        # and Checkout JS is the sole payment path.
+        # When RAZORPAY_PAYMENT_LINK is set we push it as direct_link so the
+        # frontend opens it in a new tab instead of invoking Razorpay Checkout.
+        direct_link = settings.razorpay_payment_link or ""
         await self._push(user_id, {
             "type":         "payment",
             "amount":       amount,        # paise
             "description":  description,
-            "payment_link": payment_link,  # direct link fallback
+            "payment_link": payment_link,  # WhatsApp fallback link
+            "direct_link":  direct_link,   # non-empty → open in new tab (beta path)
             "key_id":       settings.razorpay_key_id,
             "ts":           time.time(),
         })

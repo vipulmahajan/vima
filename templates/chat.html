@@ -1261,12 +1261,17 @@ function vimaChat() {
       row.appendChild(this._timeEl(msg.ts));
       this._mount(row);
 
-      // Wire up Razorpay after mount.
+      // Wire up payment button after mount.
+      // TODO: remove direct_link branch once RAZORPAY_KEY_ID is a live key.
       const payBtn = document.getElementById(btnId);
       const errEl  = document.getElementById(errId);
       if (payBtn) {
         payBtn.addEventListener('click', () => {
-          this.openRazorpay({ btn: payBtn, errEl, msg });
+          if (msg.direct_link) {
+            window.open(msg.direct_link, '_blank', 'noopener,noreferrer');
+          } else {
+            this.openRazorpay({ btn: payBtn, errEl, msg });
+          }
         });
       }
     },

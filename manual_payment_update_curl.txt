@@ -1,0 +1,20 @@
+1. User pays via Razorpay link (₹1799)
+2. You get email notification from Razorpay
+3. Check Razorpay dashboard — confirm payment shows "Captured"
+4. Get user's email from your ViMa conversation or ask them
+5. Run the PowerShell command above with their email
+6. User's output (resume/prep kit) delivers automatically
+7. Done — takes you under 2 minutes per user
+
+CMD
+curl -X POST https://vima.coach/api/admin/activate-user -H "Content-Type: application/json" -d "{\"email\":\"user@example.com\",\"duration_days\":60,\"admin_secret\":\"your-admin-secret\"}"
+
+Powershell
+$body = '{"email":"user@example.com","duration_days":60,"admin_secret":"your-admin-secret"}'
+Invoke-WebRequest -Uri "https://vima.coach/api/admin/activate-user" -Method POST -ContentType "application/json" -Body $body
+
+Success Output
+{"success":true,"user":"user@example.com","period_end":"2026-07-04T..."}
+
+$body = '{"email":"user@example.com","duration_days":60,"admin_secret":"0dc05cfa6b4230d55492835e850a8fbc8b9fcf3d4369749284abd8584b6587c2"}'
+Invoke-WebRequest -Uri "https://vima.coach/api/admin/activate-user" -Method POST -ContentType "application/json" -Body $body
