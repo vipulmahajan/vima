@@ -936,11 +936,17 @@ async def ws_chat(websocket: WebSocket) -> None:
     _WS_CONNECTIONS[email] = websocket
     log.info("ws.connect email=%s", _mask_email(email))
 
+    # Derive first name from the user's display name for personalised replies.
+    from models.database import get_user_by_email as _get_user
+    _user_row = await _get_user(email) or {}
+    _full_name = (_user_row.get("name") or email.split("@")[0]).strip()
+    first_name = (_full_name.split()[0] if _full_name else "").strip()
+
     # Ensure the user's WebMessenger queue exists before starting the drain.
     from services.web_messenger import _queue_for
     queue = await _queue_for(email)
 
-    receive_task = asyncio.create_task(_ws_receive(websocket, email), name=f"ws.recv.{email[:8]}")
+    receive_task = asyncio.create_task(_ws_receive(websocket, email, first_name), name=f"ws.recv.{email[:8]}")
     drain_task   = asyncio.create_task(_ws_drain(websocket, queue),   name=f"ws.drain.{email[:8]}")
     ping_task    = asyncio.create_task(_ws_ping(websocket),           name=f"ws.ping.{email[:8]}")
 
@@ -962,7 +968,7 @@ async def ws_chat(websocket: WebSocket) -> None:
         log.info("ws.disconnect email=%s", _mask_email(email))
 
 
-async def _ws_receive(websocket: WebSocket, email: str) -> None:
+async def _ws_receive(websocket: WebSocket, email: str, first_name: str) -> None:
     """Read messages from the browser and route them through the flow engine."""
     while True:
         try:
@@ -986,7 +992,7 @@ async def _ws_receive(websocket: WebSocket, email: str) -> None:
             continue
 
         try:
-            await route_web_message(email, text)
+            await route_web_message(email, text, first_name=first_name)
         except Exception:  # noqa: BLE001
             log.exception("ws.route_error email=%s", _mask_email(email))
             await _ws_send(websocket, {

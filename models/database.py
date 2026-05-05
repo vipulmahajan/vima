@@ -413,10 +413,7 @@ async def mark_subscription_active(
         if link_id:
             q = q.eq("link_id", link_id)
         else:
-            q = (q
-                 .eq("status", "created")
-                 .order("created_at", desc=True)
-                 .limit(1))
+            q = q.eq("status", "created")
         q.execute()
 
     await asyncio.to_thread(_do)

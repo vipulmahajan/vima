@@ -195,6 +195,16 @@ async def _handle_q2(
 
     text_lower = text.lower().strip().rstrip(".!")
 
+    # ── Branch 0: voice/audio capability question ──────────────────────────
+    _VOICE_KW = {"voice", "audio", "speak", "record", "mic", "microphone", "talk"}
+    if msg_type == "text" and any(kw in text_lower for kw in _VOICE_KW):
+        return _text(sender,
+            "Yes! Tap the mic icon in the input bar, hold to record, and "
+            "release to send. I'll transcribe what you say.\n\n"
+            "You can also upload your resume as a PDF or Word doc, send a "
+            "photo of it, or paste your LinkedIn URL — whatever's easiest."
+        )
+
     # ── Branch 1: file / image upload ──────────────────────────────────────
     if msg_type in ("document", "image") and message.get("media_url"):
         try:

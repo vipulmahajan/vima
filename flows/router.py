@@ -60,12 +60,14 @@ RESET_TRIGGERS = {"menu", "hi", "hello", "start", "start over", "reset", "help",
 
 # ── Web entry point ──────────────────────────────────────────────────────────
 
-async def route_web_message(user_id: str, text: str) -> None:
+async def route_web_message(user_id: str, text: str, *, first_name: str = "") -> None:
     """Route a text message from the web channel.
 
     ``user_id`` is the user's email address (from the session JWT). Replies
     are delivered via WebMessenger's per-user asyncio.Queue — the WebSocket
     drain task picks them up. Returns None; all output is side-effectful.
+    ``first_name`` is the user's given name from Google auth, used to personalise
+    the welcome and menu messages.
     """
     message: dict[str, Any] = {
         "type": "text",
@@ -89,18 +91,23 @@ async def route_web_message(user_id: str, text: str) -> None:
             pass
 
     # Welcome sentinel from the onboarding overlay — treat as a fresh start.
+    # Only fire the welcome message when the user genuinely has no prior history;
+    # if history exists the greeting is already visible from _loadHistory().
     if t == "__welcome__":
         await upsert_user_state(user_id, {"flow": STATE_IDLE})
         await merge_user_state_data(user_id, {"awaiting_stage": True})
-        reply = _welcome_reply(user_id)
-        await _deliver(user_id, reply)
+        from models.database import recent_conversation
+        history = await recent_conversation(user_id, limit=1)
+        if not history:
+            reply = _welcome_reply(user_id, first_name=first_name)
+            await _deliver(user_id, reply)
         return
 
     # Hard reset / menu.
     if t.lower() in RESET_TRIGGERS:
         await upsert_user_state(user_id, {"flow": STATE_IDLE})
         await merge_user_state_data(user_id, {"awaiting_stage": True})
-        reply = _menu_reply(user_id)
+        reply = _menu_reply(user_id, first_name=first_name)
         await _deliver(user_id, reply)
         return
 
@@ -112,8 +119,10 @@ async def route_web_message(user_id: str, text: str) -> None:
             stage = _parse_stage_choice(t)
             if stage is not None:
                 reply = await _dispatch_stage(user_id, stage, message)
+            elif _is_capability_question(t):
+                reply = _capability_reply(user_id)
             else:
-                reply = _menu_reply(user_id)
+                reply = _menu_reply(user_id, first_name=first_name)
             await _deliver(user_id, reply)
             return
 
@@ -127,9 +136,15 @@ async def route_web_message(user_id: str, text: str) -> None:
             await _deliver(user_id, reply)
             return
 
+        if _is_capability_question(t):
+            await merge_user_state_data(user_id, {"awaiting_stage": True})
+            reply = _capability_reply(user_id)
+            await _deliver(user_id, reply)
+            return
+
         if not data:
             await merge_user_state_data(user_id, {"awaiting_stage": True})
-            reply = _menu_reply(user_id)
+            reply = _menu_reply(user_id, first_name=first_name)
             await _deliver(user_id, reply)
             return
 
@@ -458,28 +473,60 @@ def _media_fallback(message: dict[str, Any]) -> str:
     return "[User sent an unsupported message type — ask them to type their query.]"
 
 
-def _welcome_reply(to: str) -> dict[str, Any]:
-    """Warmer first-time greeting for web users who just dismissed the overlay."""
+def _welcome_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
+    """First-time greeting for web users who just dismissed the onboarding overlay."""
+    greeting = f"Hi {first_name}!" if first_name else "Hi!"
     text = (
-        "Great to have you here! I'm *ViMa*, your AI career coach.\n\n"
-        "I can help you with:\n"
-        "*1.* Building a tailored resume\n"
-        "*2.* Preparing for interviews\n\n"
-        "Which would you like to start with?"
+        f"{greeting} I'm *ViMa* — your senior career coach.\n\n"
+        "I help professionals like you land roles they deserve. "
+        "Where are you in your career journey right now?\n\n"
+        "*1.* Searching for roles\n"
+        "*2.* Building a tailored resume\n"
+        "*3.* Preparing for interviews\n"
+        "*4.* Negotiating an offer\n"
+        "*5.* First 90 days in a new role"
     )
     return _text_reply(to, text)
 
 
-def _menu_reply(to: str) -> dict[str, Any]:
+def _menu_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
+    greeting = f"Hey {first_name}," if first_name else "Hey,"
     text = (
-        "Hi, I'm *ViMa* — your AI career coach.\n\n"
-        "Where are you in your career transition? Reply with the number:\n\n"
+        f"{greeting} where are you in your career transition? Reply with the number:\n\n"
         "*1.* Searching for roles\n"
-        "*2.* Creating a custom resume\n"
-        "*3.* Preparing for interview\n"
+        "*2.* Building a tailored resume\n"
+        "*3.* Preparing for interviews\n"
         "*4.* Negotiating an offer\n"
         "*5.* First 90 days planning\n\n"
-        "All features are included in the ViMa subscription (₹1,799/month)."
+        "All features are included in the ViMa subscription (₹1,799 for 60 days)."
+    )
+    return _text_reply(to, text)
+
+
+_CAPABILITY_KEYWORDS = {
+    "what can you do", "what do you do", "what do you offer", "what can you help",
+    "how does this work", "how do you work", "tell me about yourself",
+    "what are you", "what is vima", "what's vima", "whats vima",
+    "help me understand", "your features", "your capabilities",
+}
+
+
+def _is_capability_question(text: str) -> bool:
+    t = text.lower().strip()
+    if t in _CAPABILITY_KEYWORDS:
+        return True
+    return any(kw in t for kw in _CAPABILITY_KEYWORDS)
+
+
+def _capability_reply(to: str) -> dict[str, Any]:
+    text = (
+        "I help you through your entire job transition:\n\n"
+        "*Resume* — a tailored rewrite that gets past ATS and speaks to your target role.\n"
+        "*Interview prep* — round-specific questions and a full mock interview with honest feedback.\n"
+        "*Offer negotiation* — strategy to get the CTC you deserve.\n"
+        "*First 90 days* — a plan to start strong and build credibility fast.\n\n"
+        "Everything you need to land and succeed in your next role. "
+        "Which of these do you need help with right now?"
     )
     return _text_reply(to, text)
 
