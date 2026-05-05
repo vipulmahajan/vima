@@ -32,6 +32,28 @@ _env = Environment(
 # PDF (existing)
 # ─────────────────────────────────────────────────────────────────────────────
 
+import logging as _logging
+_log = _logging.getLogger(__name__)
+
+# GTK-related error strings that WeasyPrint surfaces when the runtime libraries
+# are missing (common on Railway without the full GTK stack installed).
+_GTK_ERROR_HINTS = (
+    "cannot load library",
+    "libgobject",
+    "libpango",
+    "libcairo",
+    "gtk",
+    "OSError",
+    "no library called",
+    "pangocairo",
+)
+
+
+def _is_gtk_error(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return isinstance(exc, OSError) or any(h in msg for h in _GTK_ERROR_HINTS)
+
+
 def render_resume_pdf(resume_data: dict[str, Any]) -> bytes:
     """Render a tailored resume to PDF bytes."""
     from weasyprint import HTML, CSS  # lazy: needs GTK runtime
@@ -43,6 +65,17 @@ def render_resume_pdf(resume_data: dict[str, Any]) -> bytes:
     return HTML(string=html_str, base_url=str(TEMPLATES_DIR)).write_pdf(
         stylesheets=stylesheets
     )
+
+
+def try_render_resume_pdf(resume_data: dict[str, Any]) -> "bytes | None":
+    """Like render_resume_pdf but returns None on GTK/OSError instead of raising."""
+    try:
+        return render_resume_pdf(resume_data)
+    except Exception as exc:  # noqa: BLE001
+        if _is_gtk_error(exc):
+            _log.warning("PDF skipped — GTK runtime unavailable: %s", exc)
+            return None
+        raise
 
 
 def render_interview_report_pdf(report_data: dict[str, Any]) -> bytes:
@@ -68,6 +101,17 @@ def render_interview_prep_pdf(prep_data: dict[str, Any]) -> bytes:
     return HTML(string=html_str, base_url=str(TEMPLATES_DIR)).write_pdf(
         stylesheets=stylesheets or None
     )
+
+
+def try_render_interview_prep_pdf(prep_data: dict[str, Any]) -> "bytes | None":
+    """Like render_interview_prep_pdf but returns None on GTK/OSError instead of raising."""
+    try:
+        return render_interview_prep_pdf(prep_data)
+    except Exception as exc:  # noqa: BLE001
+        if _is_gtk_error(exc):
+            _log.warning("Interview prep PDF skipped — GTK runtime unavailable: %s", exc)
+            return None
+        raise
 
 
 # ─────────────────────────────────────────────────────────────────────────────

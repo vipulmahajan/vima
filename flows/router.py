@@ -475,16 +475,13 @@ def _media_fallback(message: dict[str, Any]) -> str:
 
 def _welcome_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
     """First-time greeting for web users who just dismissed the onboarding overlay."""
-    greeting = f"Hi {first_name}!" if first_name else "Hi!"
+    greeting = f"Hey {first_name}!" if first_name else "Hey!"
     text = (
         f"{greeting} I'm *ViMa* — your senior career coach.\n\n"
-        "I help professionals like you land roles they deserve. "
-        "Where are you in your career journey right now?\n\n"
-        "*1.* Searching for roles\n"
-        "*2.* Building a tailored resume\n"
-        "*3.* Preparing for interviews\n"
-        "*4.* Negotiating an offer\n"
-        "*5.* First 90 days in a new role"
+        "Where are you in your career transition?\n\n"
+        "*1.* Building a tailored resume\n"
+        "*2.* Preparing for interviews\n\n"
+        "More stages coming soon — offer negotiation, first 90 days, and job search strategy."
     )
     return _text_reply(to, text)
 
@@ -492,13 +489,10 @@ def _welcome_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
 def _menu_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
     greeting = f"Hey {first_name}," if first_name else "Hey,"
     text = (
-        f"{greeting} where are you in your career transition? Reply with the number:\n\n"
-        "*1.* Searching for roles\n"
-        "*2.* Building a tailored resume\n"
-        "*3.* Preparing for interviews\n"
-        "*4.* Negotiating an offer\n"
-        "*5.* First 90 days planning\n\n"
-        "All features are included in the ViMa subscription (₹1,799 for 60 days)."
+        f"{greeting} where are you in your career transition?\n\n"
+        "*1.* Building a tailored resume\n"
+        "*2.* Preparing for interviews\n\n"
+        "More stages coming soon — offer negotiation, first 90 days, and job search strategy."
     )
     return _text_reply(to, text)
 
@@ -541,28 +535,26 @@ STAGE_NEGOTIATION = "negotiation"
 STAGE_FIRST_90    = "first_90_days"
 
 _STAGE_KEYWORDS: dict[str, str] = {
-    "1": STAGE_SEARCHING,
+    "1": STAGE_RESUME,
+    "resume": STAGE_RESUME,
+    "cv": STAGE_RESUME,
+    "custom resume": STAGE_RESUME,
+
+    "2": STAGE_INTERVIEW,
+    "interview": STAGE_INTERVIEW,
+    "preparing for interview": STAGE_INTERVIEW,
+    "prep": STAGE_INTERVIEW,
+
+    # Keyword-only (not shown in menu — coming soon)
     "search": STAGE_SEARCHING,
     "searching": STAGE_SEARCHING,
     "job search": STAGE_SEARCHING,
     "looking": STAGE_SEARCHING,
 
-    "2": STAGE_RESUME,
-    "resume": STAGE_RESUME,
-    "cv": STAGE_RESUME,
-    "custom resume": STAGE_RESUME,
-
-    "3": STAGE_INTERVIEW,
-    "interview": STAGE_INTERVIEW,
-    "preparing for interview": STAGE_INTERVIEW,
-    "prep": STAGE_INTERVIEW,
-
-    "4": STAGE_NEGOTIATION,
     "negotiation": STAGE_NEGOTIATION,
     "negotiating": STAGE_NEGOTIATION,
     "offer": STAGE_NEGOTIATION,
 
-    "5": STAGE_FIRST_90,
     "first 90": STAGE_FIRST_90,
     "first 90 days": STAGE_FIRST_90,
     "90 days": STAGE_FIRST_90,

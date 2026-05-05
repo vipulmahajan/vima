@@ -43,7 +43,7 @@ from services.claude_service import (
 from services.document_parser import extract_text
 from config import settings
 from services.payment_service import PaymentService
-from services.pdf_service import render_resume_pdf, render_resume_docx
+from services.pdf_service import try_render_resume_pdf, render_resume_docx
 from services.research_service import research_role
 from services.messenger import get_messenger
 
@@ -124,6 +124,9 @@ async def handle(
             "your resume will arrive automatically. If you've already paid, "
             "give it a minute and reply *menu* if nothing arrives."
         )
+
+    if step == DONE:
+        return await _handle_done(sender, message, text)
 
     return _resume_done(sender)
 
@@ -592,23 +595,17 @@ async def _handle_proc2(
         except Exception as exc:  # noqa: BLE001
             log.warning("strategy note send failed: %s", exc)
 
-    # 4. Render BOTH PDF and DOCX in-memory.
+    # 4. Render PDF (GTK-optional) and DOCX in-memory.
     pdf_bytes:  Optional[bytes] = None
     docx_bytes: Optional[bytes] = None
-    pdf_error  = None
-    docx_error = None
 
-    try:
-        pdf_bytes = render_resume_pdf(resume_json or {})
-    except Exception as exc:  # noqa: BLE001
-        log.exception("PDF render failed: %s", exc)
-        pdf_error = exc
+    # try_render_resume_pdf returns None silently when GTK libs are missing.
+    pdf_bytes = try_render_resume_pdf(resume_json or {})
 
     try:
         docx_bytes = render_resume_docx(resume_json or {}, template="executive")
     except Exception as exc:  # noqa: BLE001
         log.exception("DOCX render failed: %s", exc)
-        docx_error = exc
 
     if not pdf_bytes and not docx_bytes:
         return _text(sender,
@@ -616,7 +613,9 @@ async def _handle_proc2(
             "renders hit a snag. Reply *retry* and I'll try again."
         )
 
-    # 5. Deliver via the channel-agnostic messenger. PDF first, DOCX follow-up.
+    await upsert_user_state(sender, {"resume_step": DONE})
+
+    # 5. Deliver via the channel-agnostic messenger.
     if pdf_bytes:
         try:
             await messenger.send_document(
@@ -627,39 +626,26 @@ async def _handle_proc2(
             )
         except Exception as exc:  # noqa: BLE001
             log.warning("PDF delivery failed: %s", exc)
-    elif pdf_error:
-        try:
-            await messenger.send_text(
-                sender,
-                "PDF render hit a snag, but I've got the editable Word "
-                "version coming through next.",
-            )
-        except Exception:  # noqa: BLE001
-            pass
-
-    await upsert_user_state(sender, {"resume_step": DONE})
 
     if docx_bytes:
+        docx_caption = (
+            "Your tailored resume is ready — here's your editable Word version."
+            if not pdf_bytes
+            else "And here's an editable Word version — feel free to tweak anything before submitting."
+        )
         try:
             await messenger.send_document(
                 sender,
                 docx_bytes,
                 filename="ViMa-Resume.docx",
-                caption=(
-                    "And here's an editable Word version — feel free to tweak "
-                    "anything before submitting."
-                ),
+                caption=docx_caption,
             )
         except Exception as exc:  # noqa: BLE001
             log.warning("DOCX delivery failed: %s", exc)
-        # Both formats already dispatched; no further reply needed.
         return None  # type: ignore[return-value]
 
-    # PDF succeeded, DOCX failed — note that and end the turn.
-    return _text(sender,
-        "Word version hit a render snag — I'll have it ready shortly. "
-        "Reply *menu* anytime."
-    )
+    # PDF sent but DOCX failed — no DOCX to send, turn is complete.
+    return None  # type: ignore[return-value]
 
 
 # ── Static prompts ──────────────────────────────────────────────────────────
@@ -720,6 +706,86 @@ def _ask_q5(sender: str) -> dict[str, Any]:
         "What's your *superpower* — the one thing you're known for doing "
         "better than your peers? One or two sentences is enough."
     )
+
+
+_EDIT_KEYWORDS = {
+    "highlight", "add", "change", "update", "more", "better", "fix",
+    "include", "remove", "emphasise", "emphasize", "strengthen", "rewrite",
+    "adjust", "tweak", "rephrase", "mention", "focus", "improve",
+}
+
+
+def _is_edit_request(text: str) -> bool:
+    t = text.lower()
+    return any(kw in t for kw in _EDIT_KEYWORDS)
+
+
+async def _handle_done(
+    sender: str, message: dict[str, Any], text: str,
+) -> dict[str, Any]:
+    """After delivery, handle edit requests by regenerating with the user's feedback."""
+    if not _is_edit_request(text):
+        return _resume_done(sender)
+
+    messenger = await get_messenger(sender)
+    try:
+        await messenger.send_text(sender, "Good call — let me sharpen that. Give me a moment...")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("edit ack send failed: %s", exc)
+
+    state = await get_user_state(sender)
+    data  = state.get("data") or {}
+    claude = ClaudeService()
+
+    try:
+        resume_json = await claude.generate_resume(
+            sender_phone        = sender,
+            current_role_target = data.get("current_role_target"),
+            resume_sources      = data.get("resume_sources"),
+            resume_text         = data.get("resume_text"),
+            linkedin_url        = data.get("linkedin_url"),
+            jd_text             = data.get("jd_text"),
+            jd_url              = data.get("jd_url"),
+            hiring_manager      = data.get("hiring_manager"),
+            superpower          = data.get("superpower"),
+            q6_question         = data.get("q6_question"),
+            q6_answer           = data.get("q6_answer"),
+            company_research    = data.get("company_research"),
+            edit_instruction    = text,
+        )
+    except ClaudeUnavailable:
+        log.error("generate_resume (edit) exhausted retries; phone=%s", _mask(sender))
+        return _text(sender, CLAUDE_EXHAUSTED_MSG)
+    except Exception as exc:  # noqa: BLE001
+        log.exception("generate_resume (edit) unexpected error: %s", exc)
+        return _text(sender, CLAUDE_EXHAUSTED_MSG)
+
+    # Persist updated JSON so further edits build on the latest version.
+    await merge_user_state_data(sender, {"resume_json": resume_json})
+
+    docx_bytes: Optional[bytes] = None
+    try:
+        docx_bytes = render_resume_docx(resume_json or {}, template="executive")
+    except Exception as exc:  # noqa: BLE001
+        log.exception("DOCX render failed (edit): %s", exc)
+
+    if not docx_bytes:
+        return _text(sender,
+            "I updated the resume but hit a snag generating the Word file. "
+            "Reply *retry* and I'll try again."
+        )
+
+    try:
+        await messenger.send_document(
+            sender,
+            docx_bytes,
+            filename="ViMa-Resume-v2.docx",
+            caption="Here's your updated resume — let me know if you'd like anything else adjusted.",
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("DOCX delivery failed (edit): %s", exc)
+
+    return None  # type: ignore[return-value]
 
 
 def _resume_done(sender: str) -> dict[str, Any]:

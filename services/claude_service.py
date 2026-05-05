@@ -290,6 +290,7 @@ class ClaudeService:
         q6_question:         Optional[str]      = None,
         q6_answer:           Optional[str]      = None,
         company_research:    Optional[dict[str, Any]] = None,
+        edit_instruction:    Optional[str]      = None,
     ) -> dict[str, Any]:
         """Generate a tailored resume as a structured dict.
 
@@ -325,6 +326,7 @@ class ClaudeService:
             q6_question=q6_question,
             q6_answer=q6_answer,
             company_research=company_research,
+            edit_instruction=edit_instruction,
         )
 
         # Retries are handled inside `_create_with_retry`; on exhaustion this
@@ -713,6 +715,15 @@ def _build_resume_user_payload(**fields: Any) -> str:
             "",
             "── EXISTING RESUME (parsed text) ──────────",
             (fields.get("resume_text") or "(no existing resume provided)")[:18000],
+        ]
+
+    if fields.get("edit_instruction"):
+        sections += [
+            "",
+            "── REVISION INSTRUCTION (from the candidate) ──",
+            fields["edit_instruction"],
+            "Apply this revision across the entire resume where relevant. "
+            "Keep everything else unchanged.",
         ]
 
     sections += [

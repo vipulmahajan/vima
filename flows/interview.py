@@ -48,7 +48,7 @@ from services.claude_service import (
 from config import settings
 from services.payment_service import PaymentService
 from services.pdf_service import (
-    render_interview_prep_pdf,
+    try_render_interview_prep_pdf,
     render_interview_prep_docx,
 )
 from services.voice_service import transcribe_voice_note
@@ -392,14 +392,12 @@ async def _handle_prep_generating(
     # Persist for retry / mock interview reuse.
     await merge_user_state_data(sender, {"interview_prep_json": prep_json})
 
-    # 2. Render BOTH formats in-memory.
+    # 2. Render PDF (GTK-optional) and DOCX in-memory.
     pdf_bytes:  Optional[bytes] = None
     docx_bytes: Optional[bytes] = None
 
-    try:
-        pdf_bytes = render_interview_prep_pdf(prep_json or {})
-    except Exception as exc:  # noqa: BLE001
-        log.exception("Interview prep PDF render failed: %s", exc)
+    # try_render_interview_prep_pdf returns None silently when GTK libs are missing.
+    pdf_bytes = try_render_interview_prep_pdf(prep_json or {})
 
     try:
         docx_bytes = render_interview_prep_docx(prep_json or {}, template="executive")
@@ -412,7 +410,7 @@ async def _handle_prep_generating(
             "Reply *retry* and I'll try again."
         )
 
-    # 3. Deliver via the channel-agnostic messenger. PDF first, DOCX follow-up.
+    # 3. Deliver via the channel-agnostic messenger.
     if pdf_bytes:
         try:
             await messenger.send_document(
@@ -424,14 +422,16 @@ async def _handle_prep_generating(
             log.warning("Prep PDF delivery failed: %s", exc)
 
     if docx_bytes:
+        docx_caption = (
+            "Your interview prep kit is ready — here's your editable Word version."
+            if not pdf_bytes
+            else "And here's an editable Word version — feel free to tweak anything before submitting."
+        )
         try:
             await messenger.send_document(
                 sender, docx_bytes,
                 filename="ViMa-Interview-Prep.docx",
-                caption=(
-                    "And here's an editable Word version — feel free "
-                    "to tweak anything before submitting."
-                ),
+                caption=docx_caption,
             )
         except Exception as exc:  # noqa: BLE001
             log.warning("Prep DOCX delivery failed: %s", exc)
