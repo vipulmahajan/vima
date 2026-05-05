@@ -58,7 +58,212 @@ STATE_INTERVIEW = "interview"
 RESET_TRIGGERS = {"menu", "hi", "hello", "start", "start over", "reset", "help", "/start"}
 
 
-# ── Entry point ─────────────────────────────────────────────────────────────
+# ── Web entry point ──────────────────────────────────────────────────────────
+
+async def route_web_message(user_id: str, text: str) -> None:
+    """Route a text message from the web channel.
+
+    ``user_id`` is the user's email address (from the session JWT). Replies
+    are delivered via WebMessenger's per-user asyncio.Queue — the WebSocket
+    drain task picks them up. Returns None; all output is side-effectful.
+    """
+    message: dict[str, Any] = {
+        "type": "text",
+        "text": text.strip(),
+        "media_url": None,
+        "mime_type": None,
+        "filename":  None,
+        "caption":   None,
+    }
+
+    state   = await get_user_state(user_id)
+    current = state.get("flow", STATE_IDLE)
+    t       = text.strip()
+
+    # Persist inbound message for history (best-effort, non-blocking).
+    if t and t != "__welcome__":
+        from models.database import append_conversation
+        try:
+            await append_conversation(user_id, "user", t)
+        except Exception:  # noqa: BLE001
+            pass
+
+    # Welcome sentinel from the onboarding overlay — treat as a fresh start.
+    if t == "__welcome__":
+        await upsert_user_state(user_id, {"flow": STATE_IDLE})
+        await merge_user_state_data(user_id, {"awaiting_stage": True})
+        reply = _welcome_reply(user_id)
+        await _deliver(user_id, reply)
+        return
+
+    # Hard reset / menu.
+    if t.lower() in RESET_TRIGGERS:
+        await upsert_user_state(user_id, {"flow": STATE_IDLE})
+        await merge_user_state_data(user_id, {"awaiting_stage": True})
+        reply = _menu_reply(user_id)
+        await _deliver(user_id, reply)
+        return
+
+    intent = _detect_intent(t)
+
+    if current == STATE_IDLE:
+        data = state.get("data") or {}
+        if data.get("awaiting_stage"):
+            stage = _parse_stage_choice(t)
+            if stage is not None:
+                reply = await _dispatch_stage(user_id, stage, message)
+            else:
+                reply = _menu_reply(user_id)
+            await _deliver(user_id, reply)
+            return
+
+        if intent == STATE_RESUME:
+            reply = await _enter_resume(user_id, message, skip_welcome=False)
+            await _deliver(user_id, reply)
+            return
+
+        if intent == STATE_INTERVIEW:
+            reply = await _enter_interview(user_id, message)
+            await _deliver(user_id, reply)
+            return
+
+        if not data:
+            await merge_user_state_data(user_id, {"awaiting_stage": True})
+            reply = _menu_reply(user_id)
+            await _deliver(user_id, reply)
+            return
+
+        claude = ClaudeService()
+        reply_text = await claude.chat_with_persona(user_id, t)
+        await _deliver(user_id, _text_reply(user_id, reply_text))
+        return
+
+    # Mid-flow intent switch.
+    if current == STATE_RESUME and intent == STATE_INTERVIEW:
+        reply = await _enter_interview(user_id, message)
+        await _deliver(user_id, reply)
+        return
+
+    if current == STATE_INTERVIEW and intent == STATE_RESUME:
+        reply = await _enter_resume(user_id, message, skip_welcome=False)
+        await _deliver(user_id, reply)
+        return
+
+    if current == STATE_RESUME:
+        reply = await resume_flow.handle(user_id, message, state)
+        await _deliver(user_id, reply)
+        return
+
+    if current == STATE_INTERVIEW:
+        reply = await interview_flow.handle(user_id, message, state)
+        await _deliver(user_id, reply)
+        return
+
+    await upsert_user_state(user_id, {"flow": STATE_IDLE})
+    await _deliver(user_id, _menu_reply(user_id))
+
+
+async def route_web_document(
+    user_id: str,
+    extracted_text: str,
+    filename: str,
+    mime_type: str,
+) -> None:
+    """Inject a pre-parsed web upload into the active flow.
+
+    For document-accepting steps (resume Q2, JD Q3) we build a synthetic
+    ``document`` message carrying the already-extracted text at
+    ``message["pre_extracted_text"]`` and bypass the URL-download path inside
+    the flow handlers by routing through the patched resume/interview handlers
+    below.  For all other steps we fall back to plain text routing so the user
+    gets a sensible reply ("I wasn't expecting a file right now…").
+    """
+    state   = await get_user_state(user_id)
+    current = state.get("flow", STATE_IDLE)
+    step    = state.get("resume_step") or state.get("interview_step") or ""
+
+    # Steps that accept a document upload directly.
+    DOC_STEPS = {
+        resume_flow.RESUME_Q2,   # existing resume upload
+        resume_flow.RESUME_Q3,   # target JD upload
+    }
+
+    if current == STATE_RESUME and step in DOC_STEPS:
+        reply = await _handle_resume_web_doc(user_id, extracted_text, filename, step, state)
+        await _deliver(user_id, reply)
+        return
+
+    # For every other flow position, treat the upload as extracted text — the
+    # user probably pasted their resume while in a text step; let it flow
+    # through the normal text router so the state machine handles it.
+    if extracted_text:
+        await route_web_message(user_id, extracted_text)
+    else:
+        await _deliver(user_id, _text_reply(
+            user_id,
+            "I received your file but couldn't read any text from it. "
+            "Try a different format or paste the text directly."
+        ))
+
+
+async def _handle_resume_web_doc(
+    user_id: str,
+    extracted_text: str,
+    filename: str,
+    step: str,
+    state: dict[str, Any],
+) -> dict[str, Any]:
+    """Handle a pre-extracted document for Q2 (resume) or Q3 (JD) steps."""
+    data = state.get("data") or {}
+
+    if step == resume_flow.RESUME_Q2:
+        sources: list[dict[str, Any]] = list(data.get("resume_sources") or [])
+        fname_lower = (filename or "").lower()
+        is_li_pdf   = "linkedin" in fname_lower or "profile" in fname_lower
+        kind        = "linkedin_pdf" if is_li_pdf else "resume"
+        sources.append({"type": kind, "text": extracted_text, "filename": filename})
+        await merge_user_state_data(user_id, {"resume_sources": sources})
+        kind_label = "LinkedIn PDF" if kind == "linkedin_pdf" else "resume"
+        return _text_reply(user_id,
+            f"Got your {kind_label}. Send another version, paste your "
+            "LinkedIn profile URL, or type *done* when you're finished."
+        )
+
+    if step == resume_flow.RESUME_Q3:
+        if len(extracted_text) < 80:
+            return _text_reply(user_id,
+                "Couldn't read enough text from that JD. "
+                "Try a clearer PDF, or paste the job posting link."
+            )
+        await merge_user_state_data(user_id, {"jd_source": "file", "jd_text": extracted_text})
+        await upsert_user_state(user_id, {"resume_step": resume_flow.RESUME_Q4})
+        return _text_reply(user_id,
+            "Got the JD. One more thing — do you have the hiring manager's "
+            "LinkedIn URL? (Type *skip* if not.)"
+        )
+
+    # Shouldn't reach here, but be safe.
+    return _text_reply(user_id, "Received your file.")
+
+
+async def _deliver(user_id: str, reply: Optional[dict[str, Any]]) -> None:
+    """Push a reply dict through the channel-agnostic messenger."""
+    if reply is None:
+        return
+    from services.messenger import get_messenger
+    messenger = await get_messenger(user_id)
+    await messenger.send(reply)
+
+    # Persist text turns for web users so /api/user/history can return them.
+    if "@" in user_id and reply.get("type") == "text":
+        from models.database import append_conversation
+        try:
+            await append_conversation(user_id, "assistant", reply.get("text") or "")
+        except Exception:  # noqa: BLE001
+            pass  # non-fatal; conversation history is best-effort
+
+
+# ── WhatsApp entry point ─────────────────────────────────────────────────────
 
 async def route_message(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
     """Parse a Gupshup webhook payload and return the outbound reply (or None)."""
@@ -75,9 +280,11 @@ async def route_message(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
         log.warning("Unrecognised Gupshup payload — could not extract sender/message.")
         return None
 
-    # Ensure user row exists (idempotent).
+    # Ensure user row exists (idempotent). The router is invoked from the
+    # Gupshup webhook today, so any new user passing through here is on
+    # the WhatsApp channel.
     sender_name = _extract_sender_name(payload)
-    await upsert_user(sender, name=sender_name)
+    await upsert_user(sender, name=sender_name, channel="whatsapp")
 
     state   = await get_user_state(sender)
     current = state.get("flow", STATE_IDLE)
@@ -249,6 +456,18 @@ def _media_fallback(message: dict[str, Any]) -> str:
     if kind == "image":
         return "[User sent an image — respond that you received it and ask what they'd like to do with it.]"
     return "[User sent an unsupported message type — ask them to type their query.]"
+
+
+def _welcome_reply(to: str) -> dict[str, Any]:
+    """Warmer first-time greeting for web users who just dismissed the overlay."""
+    text = (
+        "Great to have you here! I'm *ViMa*, your AI career coach.\n\n"
+        "I can help you with:\n"
+        "*1.* Building a tailored resume\n"
+        "*2.* Preparing for interviews\n\n"
+        "Which would you like to start with?"
+    )
+    return _text_reply(to, text)
 
 
 def _menu_reply(to: str) -> dict[str, Any]:

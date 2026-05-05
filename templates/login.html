@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#F8F4EB" />
+  <title>Sign in — ViMa</title>
+  <meta name="description" content="Sign in to ViMa, your AI career coach." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23B8841F'/%3E%3Ctext x='50' y='66' font-family='Georgia,serif' font-size='56' font-weight='700' fill='%23F8F4EB' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; height: 100%; }
+
+    body {
+      min-height: 100%;
+      background: #F8F4EB;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      color: #2A2A2A;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── Card ───────────────────────────────────────────────────── */
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: #FFFFFF;
+      border-radius: 20px;
+      padding: 44px 36px 40px;
+      box-shadow: 0 2px 8px rgba(42,42,42,0.06), 0 12px 32px rgba(42,42,42,0.08);
+      text-align: center;
+    }
+
+    /* ── Logo mark ──────────────────────────────────────────────── */
+    .logo-mark {
+      width: 56px;
+      height: 56px;
+      background: #B8841F;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .logo-mark svg { display: block; }
+
+    /* ── Wordmark ───────────────────────────────────────────────── */
+    .wordmark {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 48px;
+      font-weight: 700;
+      color: #2A2A2A;
+      letter-spacing: -1px;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    /* ── Tagline ────────────────────────────────────────────────── */
+    .tagline {
+      font-family: "Inter", sans-serif;
+      font-size: 15px;
+      font-style: italic;
+      color: #6B6B6B;
+      margin-bottom: 36px;
+    }
+
+    /* ── Divider ────────────────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: #EDE8DE;
+      margin-bottom: 32px;
+    }
+
+    /* ── Error banner ───────────────────────────────────────────── */
+    .error-banner {
+      display: none;
+      background: #FEF3F2;
+      border: 1px solid #FECDCA;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13.5px;
+      color: #B42318;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .error-banner.visible { display: block; }
+
+    /* ── Google button ──────────────────────────────────────────── */
+    .btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 13px 20px;
+      background: #FFFFFF;
+      color: #2A2A2A;
+      font-family: "Inter", sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      border: 1.5px solid #2A2A2A;
+      border-radius: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+      letter-spacing: 0.1px;
+    }
+    .btn-google:hover {
+      background: #F8F4EB;
+      border-color: #1A1A1A;
+      box-shadow: 0 2px 8px rgba(42,42,42,0.10);
+    }
+    .btn-google:active {
+      background: #EDE8DE;
+    }
+    .btn-google svg {
+      flex-shrink: 0;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
+    .footer {
+      margin-top: 28px;
+      font-size: 12px;
+      color: #9A9080;
+      line-height: 1.6;
+    }
+    .footer a {
+      color: #8A7060;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .footer a:hover { color: #B8841F; }
+
+    @media (max-width: 360px) {
+      .card { padding: 36px 24px 32px; }
+      .wordmark { font-size: 42px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card" role="main">
+
+    <!-- Logo mark -->
+    <div class="logo-mark" aria-hidden="true">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <path d="M12 3C7.58 3 4 6.58 4 11c0 2.62 1.24 4.94 3.16 6.42L6 21l3.8-1.52A8 8 0 1 0 12 3z" fill="#F8F4EB"/>
+      </svg>
+    </div>
+
+    <!-- Wordmark -->
+    <h1 class="wordmark">ViMa</h1>
+
+    <!-- Tagline -->
+    <p class="tagline">Your senior career coach</p>
+
+    <div class="divider" aria-hidden="true"></div>
+
+    <!-- Error banner (shown via JS if ?error= param present) -->
+    <div id="error-banner" class="error-banner" role="alert"></div>
+
+    <!-- Google Sign-In button -->
+    <a href="/api/auth/google/login" class="btn-google" id="google-btn">
+      <!-- Official Google G logo -->
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M19.6 10.23c0-.68-.06-1.36-.17-2H10v3.79h5.39a4.6 4.6 0 0 1-2 3.02v2.51h3.23c1.89-1.74 2.98-4.3 2.98-7.32z" fill="#4285F4"/>
+        <path d="M10 20c2.7 0 4.96-.9 6.62-2.44l-3.23-2.51c-.9.6-2.04.96-3.39.96-2.6 0-4.8-1.76-5.59-4.12H1.08v2.59A10 10 0 0 0 10 20z" fill="#34A853"/>
+        <path d="M4.41 11.89A6.02 6.02 0 0 1 4.1 10c0-.65.11-1.29.31-1.89V5.52H1.08A10 10 0 0 0 0 10c0 1.61.39 3.14 1.08 4.48l3.33-2.59z" fill="#FBBC05"/>
+        <path d="M10 3.96c1.47 0 2.79.51 3.83 1.5l2.87-2.87C14.95.99 12.69 0 10 0A10 10 0 0 0 1.08 5.52l3.33 2.59C5.2 5.72 7.4 3.96 10 3.96z" fill="#EA4335"/>
+      </svg>
+      Continue with Google
+    </a>
+
+    <!-- Privacy footer -->
+    <p class="footer">
+      By continuing you agree to our <a href="/privacy">Privacy Policy</a>.<br>
+      We only access your name and email from Google.
+    </p>
+
+  </div>
+
+  <script>
+    // Show error banner if redirected back with an error param.
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var err = params.get('error');
+      if (!err) return;
+
+      var messages = {
+        access_denied:  'Sign-in was cancelled. Please try again.',
+        state_mismatch: 'Security check failed. Please try again.',
+        no_code:        'Google did not return an authorisation code. Please try again.',
+        auth_failed:    'Something went wrong during sign-in. Please try again.',
+      };
+
+      var banner = document.getElementById('error-banner');
+      banner.textContent = messages[err] || 'Sign-in failed. Please try again.';
+      banner.classList.add('visible');
+    })();
+  </script>
+
+</body>
+</html>

@@ -20,6 +20,9 @@ anthropic==0.40.0
 # --- Database / Storage ---
 supabase==2.10.0
 
+# --- Auth ---
+PyJWT==2.10.1
+
 # --- Payments ---
 razorpay>=1.4.2
 

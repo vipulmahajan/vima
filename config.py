@@ -33,11 +33,16 @@ class Settings(BaseSettings):
     claude_model: str = Field(default="claude-sonnet-4-6")
     claude_max_tokens: int = Field(default=2048)
 
-    # --- Gupshup (WhatsApp) ---
+    # --- Gupshup (WhatsApp + SMS) ---
     gupshup_api_key: str = Field(default="")
     gupshup_app_name: str = Field(default="")
     gupshup_source_number: str = Field(default="")
     gupshup_webhook_secret: str = Field(default="")
+    # SMS sender ID registered with Gupshup for OTP delivery.
+    # If your account uses the same key for both WhatsApp and SMS, set this
+    # to the same value as GUPSHUP_API_KEY.
+    gupshup_sms_api_key: str = Field(default="")
+    gupshup_sms_source: str = Field(default="VIMACX")  # 6-char DLT sender ID
 
     # --- Supabase ---
     supabase_url: str = Field(default="")
@@ -61,6 +66,25 @@ class Settings(BaseSettings):
     aws_region: str = Field(default="ap-south-1")
     # Transcribe writes its JSON output to this S3 bucket (may reuse storage bucket).
     aws_transcribe_s3_bucket: str = Field(default="")
+
+    # --- Web auth ---
+    # Secret used to sign/verify session JWTs. Generate with:
+    #   python -c "import secrets; print(secrets.token_hex(32))"
+    jwt_secret: str = Field(default="change-me-in-production")
+    jwt_algorithm: str = Field(default="HS256")
+    session_ttl_days: int = Field(default=30)
+
+    # --- Google OAuth ---
+    google_client_id: str = Field(default="")
+    google_client_secret: str = Field(default="")
+    google_redirect_uri: str = Field(
+        default="http://localhost:8000/api/auth/google/callback"
+    )
+
+    # --- Admin (temporary, beta only) ---
+    # TODO: remove once Razorpay production keys are live and all activation
+    # goes through /api/payment/verify.
+    admin_secret: str = Field(default="")
 
     # --- Public-facing site ---
     # E.164 without leading '+' (e.g. 919876543210). Used to build the

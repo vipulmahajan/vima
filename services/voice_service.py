@@ -57,17 +57,22 @@ async def transcribe_voice_note(
     If `sender` is provided, an immediate ack is sent to that WhatsApp number
     BEFORE the slow Transcribe job starts so the user isn't left in silence.
     """
+    # 1. Fire-and-forget ack via the channel-agnostic messenger so the user
+    #    sees activity immediately, regardless of which channel they're on.
+    if sender:
+        try:
+            from services.messenger import get_messenger
+            messenger = await get_messenger(sender)
+            await messenger.send_typing_indicator(sender)
+            await messenger.send_text(sender, _ACK_MESSAGE)
+        except Exception:  # noqa: BLE001
+            # Never let ack failure block the actual transcription.
+            pass
+
+    # 2. Download the audio. Inbound media download is channel-specific —
+    #    today only WhatsApp/Gupshup voice notes hit this code path.
     whatsapp = WhatsAppService()
     try:
-        # 1. Fire-and-forget ack so the user sees activity immediately.
-        if sender:
-            try:
-                await whatsapp.send_text(sender, _ACK_MESSAGE)
-            except Exception:  # noqa: BLE001
-                # Never let ack failure block the actual transcription.
-                pass
-
-        # 2. Download the audio.
         audio_bytes = await whatsapp.download_media(media_url_or_id)
     finally:
         await whatsapp.aclose()
@@ -135,6 +140,18 @@ def _run_transcription_job(audio_bytes: bytes) -> str:
                 s3.delete_object(Bucket=bucket, Key=key)
             except Exception:  # noqa: BLE001
                 pass
+
+
+async def transcribe_bytes(audio_bytes: bytes) -> str:
+    """Transcribe raw audio bytes (e.g. WebM/Opus from MediaRecorder).
+
+    Bypasses the WhatsApp download step — bytes are already in memory.
+    Runs the S3 + Transcribe pipeline in a thread and returns the transcript,
+    or "" on failure.
+    """
+    if not audio_bytes:
+        return ""
+    return await asyncio.to_thread(_run_transcription_job, audio_bytes)
 
 
 async def synthesize_speech(text: str) -> Optional[bytes]:

@@ -44,8 +44,7 @@ from services.document_parser import extract_text
 from services.payment_service import PaymentService
 from services.pdf_service import render_resume_pdf, render_resume_docx
 from services.research_service import research_role
-from services.storage_service import StorageService
-from services.whatsapp_service import WhatsAppService
+from services.messenger import get_messenger
 
 log = logging.getLogger(__name__)
 
@@ -422,14 +421,15 @@ async def _handle_proc1(
     state = await get_user_state(sender)
     data  = state.get("data") or {}
 
-    # Fire the ack as a first WhatsApp message so the user isn't waiting silent.
+    # Fire the ack as a first message so the user isn't waiting silent.
     try:
-        async with WhatsAppService() as wa:
-            await wa.send_text_message(
-                sender,
-                "Thanks. I'm pulling up the JD, the company, and any signals "
-                "on your hiring manager. Give me a moment...",
-            )
+        messenger = await get_messenger(sender)
+        await messenger.send_typing_indicator(sender)
+        await messenger.send_text(
+            sender,
+            "Thanks. I'm pulling up the JD, the company, and any signals "
+            "on your hiring manager. Give me a moment...",
+        )
     except Exception as exc:  # noqa: BLE001
         log.warning("proc1 ack send failed: %s", exc)
 
@@ -515,13 +515,14 @@ async def _handle_proc2(
         return _text(sender, body)
 
     # Ack first.
+    messenger = await get_messenger(sender)
     try:
-        async with WhatsAppService() as wa:
-            await wa.send_text_message(
-                sender,
-                "Got everything. Drafting a resume tailored to this role — "
-                "this usually takes about a minute.",
-            )
+        await messenger.send_typing_indicator(sender)
+        await messenger.send_text(
+            sender,
+            "Got everything. Drafting a resume tailored to this role — "
+            "this usually takes about a minute.",
+        )
     except Exception as exc:  # noqa: BLE001
         log.warning("proc2 ack send failed: %s", exc)
 
@@ -574,90 +575,76 @@ async def _handle_proc2(
         log.warning("generate_strategy_notes skipped: %s", exc)
         strategy = ""
 
-    # 3. Send strategy note as a separate WhatsApp message *before* the PDF
+    # 3. Send strategy note as a separate message *before* the document
     #    so the user reads the positioning rationale first.
     if strategy:
         try:
-            async with WhatsAppService() as wa:
-                await wa.send_text_message(
-                    sender,
-                    f"*Strategy note*\n\n{strategy}",
-                )
+            await messenger.send_text(sender, f"*Strategy note*\n\n{strategy}")
         except Exception as exc:  # noqa: BLE001
             log.warning("strategy note send failed: %s", exc)
 
-    # 4. Render BOTH PDF and DOCX, upload BOTH.
-    storage    = StorageService()
-    pdf_url:  Optional[str] = None
-    docx_url: Optional[str] = None
+    # 4. Render BOTH PDF and DOCX in-memory.
+    pdf_bytes:  Optional[bytes] = None
+    docx_bytes: Optional[bytes] = None
     pdf_error  = None
     docx_error = None
 
     try:
         pdf_bytes = render_resume_pdf(resume_json or {})
-        pdf_url   = await storage.upload(
-            f"{sender}/resume.pdf", pdf_bytes, "application/pdf",
-        )
     except Exception as exc:  # noqa: BLE001
-        log.exception("PDF render/upload failed: %s", exc)
+        log.exception("PDF render failed: %s", exc)
         pdf_error = exc
 
     try:
         docx_bytes = render_resume_docx(resume_json or {}, template="executive")
-        docx_url   = await storage.upload(
-            f"{sender}/resume.docx",
-            docx_bytes,
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
     except Exception as exc:  # noqa: BLE001
-        log.exception("DOCX render/upload failed: %s", exc)
+        log.exception("DOCX render failed: %s", exc)
         docx_error = exc
 
-    # If both failed, surface a clear retry message.
-    if not pdf_url and not docx_url:
+    if not pdf_bytes and not docx_bytes:
         return _text(sender,
             "I drafted your resume — strategy note above. Both PDF and Word "
             "renders hit a snag. Reply *retry* and I'll try again."
         )
 
-    # 5. Send the PDF first as the primary deliverable; DOCX as a follow-up.
-    if pdf_url:
+    # 5. Deliver via the channel-agnostic messenger. PDF first, DOCX follow-up.
+    if pdf_bytes:
         try:
-            async with WhatsAppService() as wa:
-                await wa.send_document(
-                    sender,
-                    pdf_url,
-                    filename="ViMa-Resume.pdf",
-                    caption="Your tailored resume is ready.",
-                )
+            await messenger.send_document(
+                sender,
+                pdf_bytes,
+                filename="ViMa-Resume.pdf",
+                caption="Your tailored resume is ready.",
+            )
         except Exception as exc:  # noqa: BLE001
             log.warning("PDF delivery failed: %s", exc)
     elif pdf_error:
-        # PDF failed but DOCX is OK — let the user know they're getting Word only.
         try:
-            async with WhatsAppService() as wa:
-                await wa.send_text_message(
-                    sender,
-                    "PDF render hit a snag, but I've got the editable Word "
-                    "version coming through next.",
-                )
+            await messenger.send_text(
+                sender,
+                "PDF render hit a snag, but I've got the editable Word "
+                "version coming through next.",
+            )
         except Exception:  # noqa: BLE001
             pass
 
     await upsert_user_state(sender, {"resume_step": DONE})
 
-    if docx_url:
-        # Final reply: the DOCX follow-up.
-        return {
-            "to": sender,
-            "type": "document",
-            "document_url": docx_url,
-            "filename": "ViMa-Resume.docx",
-            "caption": (
-                "And here's an editable Word version — feel free to tweak "
-                "anything before submitting."
-            ),
-        }
+    if docx_bytes:
+        try:
+            await messenger.send_document(
+                sender,
+                docx_bytes,
+                filename="ViMa-Resume.docx",
+                caption=(
+                    "And here's an editable Word version — feel free to tweak "
+                    "anything before submitting."
+                ),
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("DOCX delivery failed: %s", exc)
+        # Both formats already dispatched; no further reply needed.
+        return None  # type: ignore[return-value]
 
     # PDF succeeded, DOCX failed — note that and end the turn.
     return _text(sender,

@@ -9,7 +9,11 @@ the first time; on subsequent deploys you'll only repeat steps 7-8.
 
 - [ ] All four sets of credentials rotated since they were last shared in chat:
   Anthropic, Supabase service key, AWS access key, Razorpay (live mode).
-- [ ] Supabase project exists and `schema.sql` has been run in the SQL editor.
+- [ ] Supabase project exists and the **full `schema.sql` has been run** in the SQL editor.
+  The schema now includes: `users` (with `email`, `google_id`, `avatar_url` columns),
+  `sessions`, `user_documents`, `otp_codes` (unused but harmless), and idempotent
+  migrations to drop FK constraints on `conversations` and `user_state` so web users
+  (identified by email) can be stored without a phone number.
 - [ ] Supabase Storage bucket `vima-artifacts` exists and is **private**.
 - [ ] Razorpay account is in **live** mode and KYC is complete (₹1,799 charges
       will fail in test mode for real users).
@@ -26,7 +30,7 @@ git init                                       # if not already a repo
 git add .
 git commit -m "Initial ViMa production build"
 git branch -M main
-git remote add origin git@github.com:<your-handle>/vima.git
+git remote add origin https://github.com/vipulmahajan/vima.git
 git push -u origin main
 ```
 
@@ -109,6 +113,19 @@ Values come from your real production credentials, not the placeholders in
 | `AWS_SECRET_ACCESS_KEY`      | matching secret                    |
 | `AWS_REGION`                 | `ap-south-1`                       |
 | `AWS_TRANSCRIBE_S3_BUCKET`   | `vima-transcribe`  *(must exist)*  |
+
+### Web auth (Google Sign-In + sessions)
+| Variable               | Value                                                              |
+|------------------------|--------------------------------------------------------------------|
+| `GOOGLE_CLIENT_ID`     | from Google Cloud Console → APIs & Services → Credentials          |
+| `GOOGLE_CLIENT_SECRET` | same credential, secret value                                      |
+| `GOOGLE_REDIRECT_URI`  | `https://<your-railway-url>/api/auth/google/callback`              |
+| `JWT_SECRET`           | random 32-byte hex — `python -c "import secrets; print(secrets.token_hex(32))"` |
+
+> **Before going live:** add `https://<your-railway-url>/api/auth/google/callback`
+> as an **Authorised redirect URI** in Google Cloud Console → APIs & Services →
+> Credentials → your OAuth 2.0 Client ID → Edit. Without this, Google will return
+> `redirect_uri_mismatch` and users cannot sign in.
 
 ### Public site
 | Variable                | Value                                                |

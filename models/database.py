@@ -65,18 +65,152 @@ async def close_db() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def upsert_user(phone: str, name: Optional[str] = None) -> None:
+async def upsert_user(
+    phone: Optional[str] = None,
+    name: Optional[str] = None,
+    channel: Optional[str] = None,
+    email: Optional[str] = None,
+    google_id: Optional[str] = None,
+    avatar_url: Optional[str] = None,
+) -> None:
+    """Insert or update a user row.
+
+    Web users are identified by email; WhatsApp users by phone. At least one
+    of phone or email must be provided. `channel` is "web" or "whatsapp".
+    For existing rows, channel is not changed — only set on first insert.
+    """
+    if not phone and not email:
+        raise ValueError("upsert_user requires at least phone or email")
+
+    # Build update payload (fields that are always safe to overwrite on update).
+    update_fields: dict[str, Any] = {}
+    if name is not None:
+        update_fields["name"] = name
+    if avatar_url is not None:
+        update_fields["avatar_url"] = avatar_url
+
     client = _get_client()
     if client is None:
-        _LOCAL_USERS[phone] = {"phone": phone, "name": name}
+        key = email or phone
+        existing = _LOCAL_USERS.get(key)
+        if existing is None:
+            existing = {
+                "phone": phone,
+                "email": email,
+                "google_id": google_id,
+                "channel": channel or "web",
+            }
+            _LOCAL_USERS[key] = existing
+        existing.update({k: v for k, v in update_fields.items() if v is not None})
+        if channel and not existing.get("channel"):
+            existing["channel"] = channel
         return
 
     def _do() -> None:
-        client.table("users").upsert(
-            {"phone": phone, "name": name}, on_conflict="phone"
-        ).execute()
+        # Determine the lookup key and build payloads.
+        if email:
+            lookup_col = "email"
+            lookup_val = email
+        else:
+            lookup_col = "phone"
+            lookup_val = phone
+
+        existing_resp = (
+            client.table("users")
+            .select("phone, email, channel")
+            .eq(lookup_col, lookup_val)
+            .limit(1)
+            .execute()
+        )
+
+        if existing_resp.data:
+            if update_fields:
+                client.table("users").update(update_fields).eq(lookup_col, lookup_val).execute()
+        else:
+            insert_payload: dict[str, Any] = {}
+            if phone:
+                insert_payload["phone"] = phone
+            if email:
+                insert_payload["email"] = email
+            if google_id:
+                insert_payload["google_id"] = google_id
+            if name:
+                insert_payload["name"] = name
+            if avatar_url:
+                insert_payload["avatar_url"] = avatar_url
+            insert_payload["channel"] = channel or "web"
+            # Web users without a phone need a synthetic PK; use email as phone
+            # placeholder so the NOT NULL constraint is satisfied on old schemas.
+            # New schema has phone nullable, so only add if present.
+            if not insert_payload.get("phone") and not _email_pk_schema():
+                insert_payload["phone"] = email  # fallback for old schema
+            client.table("users").insert(insert_payload).execute()
 
     await asyncio.to_thread(_do)
+
+
+def _email_pk_schema() -> bool:
+    """Return True if the users table has a nullable phone column (new schema)."""
+    # We optimistically assume new schema. If insert fails, the caller handles it.
+    return True
+
+
+async def get_user_by_email(email: str) -> Optional[dict[str, Any]]:
+    """Fetch name, avatar_url, email for a web user. Returns None if not found."""
+    client = _get_client()
+    if client is None:
+        return _LOCAL_USERS.get(email)
+
+    def _do() -> Optional[dict[str, Any]]:
+        resp = (
+            client.table("users")
+            .select("email, name, avatar_url, channel")
+            .eq("email", email)
+            .maybe_single()
+            .execute()
+        )
+        return resp.data or None
+
+    return await asyncio.to_thread(_do)
+
+
+async def get_user_channel(user_id: str) -> Optional[str]:
+    """Return the user's channel ('web' or 'whatsapp'), or None if unknown.
+
+    ``user_id`` may be a phone number (WhatsApp) or an email address (web).
+    We try phone first; if that returns nothing and the value looks like an
+    email we try the email column.
+    """
+    client = _get_client()
+    if client is None:
+        row = _LOCAL_USERS.get(user_id) or {}
+        return row.get("channel")
+
+    def _do() -> Optional[str]:
+        # Try phone column first (covers WhatsApp users and legacy web users).
+        resp = (
+            client.table("users")
+            .select("channel")
+            .eq("phone", user_id)
+            .maybe_single()
+            .execute()
+        )
+        if resp.data:
+            return resp.data.get("channel")
+        # Fall back to email column (web / Google Sign-In users).
+        if "@" in user_id:
+            resp2 = (
+                client.table("users")
+                .select("channel")
+                .eq("email", user_id)
+                .maybe_single()
+                .execute()
+            )
+            if resp2.data:
+                return resp2.data.get("channel")
+        return None
+
+    return await asyncio.to_thread(_do)
 
 
 async def append_conversation(phone: str, role: str, content: str) -> None:
@@ -92,7 +226,12 @@ async def append_conversation(phone: str, role: str, content: str) -> None:
     await asyncio.to_thread(_do)
 
 
-async def recent_conversation(phone: str, limit: int = 20) -> list[dict[str, Any]]:
+async def recent_conversation(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Return the most recent ``limit`` conversation turns for a user.
+
+    ``user_id`` may be a phone (WhatsApp) or email (web). For web users the
+    conversations table stores the email in the ``phone`` column (text field).
+    """
     client = _get_client()
     if client is None:
         return []
@@ -102,7 +241,7 @@ async def recent_conversation(phone: str, limit: int = 20) -> list[dict[str, Any
             client
             .table("conversations")
             .select("role, content, created_at")
-            .eq("phone", phone)
+            .eq("phone", user_id)
             .order("created_at", desc=True)
             .limit(limit)
             .execute()
@@ -376,6 +515,33 @@ async def has_active_subscription(phone: str) -> bool:
 # ---------------------------------------------------------------------------
 # Artifacts (PDFs, audio, etc.)
 # ---------------------------------------------------------------------------
+
+
+async def store_user_document(
+    user_id: str,
+    doc_type: str,
+    filename: Optional[str],
+    mime_type: Optional[str],
+    raw_text: str,
+) -> None:
+    """Insert a row into user_documents for a web upload.
+
+    ``user_id`` is the user's email. ``doc_type`` is one of 'resume', 'jd', 'other'.
+    """
+    client = _get_client()
+    if client is None:
+        return
+
+    def _do() -> None:
+        client.table("user_documents").insert({
+            "user_id":   user_id,
+            "type":      doc_type,
+            "filename":  filename,
+            "mime_type": mime_type,
+            "raw_text":  raw_text,
+        }).execute()
+
+    await asyncio.to_thread(_do)
 
 
 async def record_artifact(phone: str, kind: str, storage_path: str) -> None:

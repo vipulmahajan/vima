@@ -50,9 +50,8 @@ from services.pdf_service import (
     render_interview_prep_pdf,
     render_interview_prep_docx,
 )
-from services.storage_service import StorageService
 from services.voice_service import transcribe_voice_note
-from services.whatsapp_service import WhatsAppService
+from services.messenger import get_messenger
 
 log = logging.getLogger(__name__)
 
@@ -360,14 +359,15 @@ async def _handle_prep_generating(
         return _text(sender, body)
 
     # 1. Ack first so the user isn't waiting silent.
+    messenger = await get_messenger(sender)
     try:
-        async with WhatsAppService() as wa:
-            await wa.send_text_message(
-                sender,
-                "Got everything I need. Building your prep kit — company brief, "
-                "likely questions with model answers, smart questions to ask. "
-                "Give me about a minute.",
-            )
+        await messenger.send_typing_indicator(sender)
+        await messenger.send_text(
+            sender,
+            "Got everything I need. Building your prep kit — company brief, "
+            "likely questions with model answers, smart questions to ask. "
+            "Give me about a minute.",
+        )
     except Exception as exc:  # noqa: BLE001
         log.warning("interview ack send failed: %s", exc)
 
@@ -403,59 +403,47 @@ async def _handle_prep_generating(
     # Persist for retry / mock interview reuse.
     await merge_user_state_data(sender, {"interview_prep_json": prep_json})
 
-    # 2. Render BOTH formats and upload.
-    storage   = StorageService()
-    pdf_url:  Optional[str] = None
-    docx_url: Optional[str] = None
+    # 2. Render BOTH formats in-memory.
+    pdf_bytes:  Optional[bytes] = None
+    docx_bytes: Optional[bytes] = None
 
     try:
         pdf_bytes = render_interview_prep_pdf(prep_json or {})
-        pdf_url   = await storage.upload(
-            f"{sender}/interview-prep.pdf", pdf_bytes, "application/pdf",
-        )
     except Exception as exc:  # noqa: BLE001
-        log.exception("Interview prep PDF failed: %s", exc)
+        log.exception("Interview prep PDF render failed: %s", exc)
 
     try:
         docx_bytes = render_interview_prep_docx(prep_json or {}, template="executive")
-        docx_url   = await storage.upload(
-            f"{sender}/interview-prep.docx",
-            docx_bytes,
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
     except Exception as exc:  # noqa: BLE001
-        log.exception("Interview prep DOCX failed: %s", exc)
+        log.exception("Interview prep DOCX render failed: %s", exc)
 
-    if not pdf_url and not docx_url:
+    if not pdf_bytes and not docx_bytes:
         return _text(sender,
             "I drafted your prep kit but both PDF and Word renders failed. "
             "Reply *retry* and I'll try again."
         )
 
-    # 3. Send PDF first as the primary deliverable.
-    if pdf_url:
+    # 3. Deliver via the channel-agnostic messenger. PDF first, DOCX follow-up.
+    if pdf_bytes:
         try:
-            async with WhatsAppService() as wa:
-                await wa.send_document(
-                    sender, pdf_url,
-                    filename="ViMa-Interview-Prep.pdf",
-                    caption="Your interview prep kit.",
-                )
+            await messenger.send_document(
+                sender, pdf_bytes,
+                filename="ViMa-Interview-Prep.pdf",
+                caption="Your interview prep kit.",
+            )
         except Exception as exc:  # noqa: BLE001
             log.warning("Prep PDF delivery failed: %s", exc)
 
-    # 4. Send DOCX as follow-up (or as the primary if PDF failed).
-    if docx_url:
+    if docx_bytes:
         try:
-            async with WhatsAppService() as wa:
-                await wa.send_document(
-                    sender, docx_url,
-                    filename="ViMa-Interview-Prep.docx",
-                    caption=(
-                        "And here's an editable Word version — feel free "
-                        "to tweak anything before submitting."
-                    ),
-                )
+            await messenger.send_document(
+                sender, docx_bytes,
+                filename="ViMa-Interview-Prep.docx",
+                caption=(
+                    "And here's an editable Word version — feel free "
+                    "to tweak anything before submitting."
+                ),
+            )
         except Exception as exc:  # noqa: BLE001
             log.warning("Prep DOCX delivery failed: %s", exc)
 

@@ -192,13 +192,16 @@ class ClaudeService:
                 if attempt >= len(_RETRY_DELAYS_SEC):
                     break
 
-                # Reassure user (best-effort) before backoff.
+                # Reassure user (best-effort) before backoff. Routes through
+                # the channel-agnostic messenger so web and WhatsApp users
+                # both get the "thinking deeply" cue.
                 if sender_phone:
                     try:
                         # Inline import: avoid circular load at module init.
-                        from services.whatsapp_service import WhatsAppService
-                        async with WhatsAppService() as wa:
-                            await wa.send_text_message(sender_phone, _REASSURE_MSG)
+                        from services.messenger import get_messenger
+                        messenger = await get_messenger(sender_phone)
+                        await messenger.send_typing_indicator(sender_phone)
+                        await messenger.send_text(sender_phone, _REASSURE_MSG)
                     except Exception as send_exc:  # noqa: BLE001
                         log.warning("claude.reassure_send_failed err=%s", send_exc)
 

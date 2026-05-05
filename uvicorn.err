@@ -1,0 +1,180 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\VM\\vima']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [8600] using WatchFiles
+INFO:     Started server process [16708]
+INFO:     Waiting for application startup.
+2026-05-05 06:54:07,369 INFO vima: Starting ViMa (env=development, echo_mode=False)
+2026-05-05 06:54:07,373 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 06:54:07,378 INFO vima: nudge_loop.start interval=3600s
+INFO:     Application startup complete.
+2026-05-05 10:16:18,743 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 10:16:18,786 INFO vima: nudge_loop.sweep nudged=0 archived=0 total_states=0
+WARNING:  WatchFiles detected changes in 'flows\router.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-05-05 10:19:32,932 INFO vima: nudge_loop.cancelled
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16708]
+INFO:     Started server process [12236]
+INFO:     Waiting for application startup.
+2026-05-05 10:19:38,486 INFO vima: Starting ViMa (env=development, echo_mode=False)
+2026-05-05 10:19:38,488 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 10:19:38,489 INFO vima: nudge_loop.start interval=3600s
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'models\database.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-05-05 10:24:24,029 INFO vima: nudge_loop.cancelled
+INFO:     Application shutdown complete.
+INFO:     Finished server process [12236]
+WARNING:  WatchFiles detected changes in 'services\voice_service.py', 'main.py'. Reloading...
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Started server process [5992]
+INFO:     Waiting for application startup.
+2026-05-05 10:24:30,437 INFO vima: Starting ViMa (env=development, echo_mode=False)
+2026-05-05 10:24:30,438 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 10:24:30,440 INFO vima: nudge_loop.start interval=3600s
+INFO:     Application startup complete.
+2026-05-05 10:24:30,541 INFO vima: nudge_loop.cancelled
+ERROR:    Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\runners.py", line 204, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 132, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\VM\vima\venv\Lib\site-packages\starlette\routing.py", line 700, in lifespan
+    await receive()
+  File "C:\Users\VM\vima\venv\Lib\site-packages\uvicorn\lifespan\on.py", line 137, in receive
+    return await self.receive_queue.get()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\queues.py", line 186, in get
+    await getter
+asyncio.exceptions.CancelledError
+
+INFO:     Started server process [18700]
+INFO:     Waiting for application startup.
+2026-05-05 10:24:35,503 INFO vima: Starting ViMa (env=development, echo_mode=False)
+2026-05-05 10:24:35,505 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 10:24:35,507 INFO vima: nudge_loop.start interval=3600s
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-05-05 10:29:31,343 INFO vima: nudge_loop.cancelled
+INFO:     Application shutdown complete.
+INFO:     Finished server process [18700]
+WARNING:  WatchFiles detected changes in 'services\web_messenger.py', 'services\storage_service.py', 'main.py'. Reloading...
+INFO:     Started server process [20612]
+INFO:     Waiting for application startup.
+2026-05-05 10:29:37,597 INFO vima: Starting ViMa (env=development, echo_mode=False)
+2026-05-05 10:29:37,598 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 10:29:37,600 INFO vima: nudge_loop.start interval=3600s
+INFO:     Application startup complete.
+2026-05-05 10:29:37,862 INFO vima: nudge_loop.cancelled
+ERROR:    Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\runners.py", line 204, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 132, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\VM\vima\venv\Lib\site-packages\starlette\routing.py", line 700, in lifespan
+    await receive()
+  File "C:\Users\VM\vima\venv\Lib\site-packages\uvicorn\lifespan\on.py", line 137, in receive
+    return await self.receive_queue.get()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\queues.py", line 186, in get
+    await getter
+asyncio.exceptions.CancelledError
+
+INFO:     Started server process [19660]
+INFO:     Waiting for application startup.
+2026-05-05 10:29:42,686 INFO vima: Starting ViMa (env=development, echo_mode=False)
+2026-05-05 10:29:42,687 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 10:29:42,689 INFO vima: nudge_loop.start interval=3600s
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-05-05 10:39:38,648 INFO vima: nudge_loop.cancelled
+INFO:     Application shutdown complete.
+INFO:     Finished server process [19660]
+WARNING:  WatchFiles detected changes in 'models\database.py', 'flows\router.py'. Reloading...
+INFO:     Started server process [3280]
+INFO:     Waiting for application startup.
+2026-05-05 10:39:44,031 INFO vima: Starting ViMa (env=development, echo_mode=False)
+2026-05-05 10:39:44,032 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 10:39:44,034 INFO vima: nudge_loop.start interval=3600s
+INFO:     Application startup complete.
+2026-05-05 10:39:44,303 INFO vima: nudge_loop.cancelled
+ERROR:    Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\runners.py", line 127, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Python314\Lib\asyncio\runners.py", line 204, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 132, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\VM\vima\venv\Lib\site-packages\starlette\routing.py", line 700, in lifespan
+    await receive()
+  File "C:\Users\VM\vima\venv\Lib\site-packages\uvicorn\lifespan\on.py", line 137, in receive
+    return await self.receive_queue.get()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\queues.py", line 186, in get
+    await getter
+asyncio.exceptions.CancelledError
+
+INFO:     Started server process [19792]
+INFO:     Waiting for application startup.
+2026-05-05 10:39:49,207 INFO vima: Starting ViMa (env=development, echo_mode=False)
+2026-05-05 10:39:49,209 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 10:39:49,211 INFO vima: nudge_loop.start interval=3600s
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+2026-05-05 11:32:17,691 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.
+2026-05-05 11:32:46,019 WARNING models.database: Supabase client init failed (Invalid API key); falling back to in-memory store.

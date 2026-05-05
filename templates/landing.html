@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a4a8c" />
-  <title>ViMa — Your senior career coach, on WhatsApp</title>
-  <meta name="description" content="ViMa is a WhatsApp-first AI career coach for Indian corporate professionals. Tailored resumes, interview prep, and trusted mentorship — all on chat." />
+  <meta name="theme-color" content="#B8841F" />
+  <title>ViMa — AI Career Coach for Indian Professionals</title>
+  <meta name="description" content="Tailored resumes, round-by-round interview prep, and honest mentorship. Get started free — no app to install." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230a4a8c'/%3E%3Ctext x='50' y='62' font-family='Georgia,serif' font-size='52' font-weight='700' fill='%23fff' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E" />
 
   <style>
@@ -230,27 +230,32 @@
 
   <!-- ── HEADER ─────────────────────────────────────────────── -->
   <header class="topbar">
-    <div class="container brand">
-      <div class="brand-mark">V</div>
-      <div class="brand-name">ViMa</div>
+    <div class="container brand" style="justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="brand-mark">V</div>
+        <div class="brand-name">ViMa</div>
+      </div>
+      <a href="/login" style="font-size:14px;font-weight:600;color:#0a4a8c;text-decoration:none">Sign in →</a>
     </div>
   </header>
 
   <!-- ── HERO ───────────────────────────────────────────────── -->
   <main class="container hero">
-    <h1>Your senior career coach, on WhatsApp.</h1>
+    <h1>Your AI career coach, built for Indian professionals.</h1>
     <p class="lead">
-      ViMa helps Indian corporate professionals walk into their next role
-      prepared and clear — with a tailored resume, sharp interview prep,
-      and honest mentorship. All on chat. No app to install.
+      ViMa helps you walk into your next role prepared — tailored resume,
+      round-by-round interview prep, and honest mentorship. Right in your
+      browser. No app to install.
     </p>
     <p class="cta-row">
-      <a class="cta" href="{{ wa_link }}" target="_blank" rel="noopener">
-        Start on WhatsApp
-      </a>
-      {% if wa_number %}
-      <span class="cta-sub">+{{ wa_number }}</span>
-      {% endif %}
+      <a class="cta" href="/login">Get started free</a>
+      <span class="cta-sub">Sign in with Google · 60-day access · ₹{{ "{:,}".format(price_inr) }}</span>
+    </p>
+
+    <!-- Social proof -->
+    <p style="margin-top:24px;font-size:13.5px;color:#64748b;border-left:3px solid #e2e8f0;padding-left:14px;font-style:italic">
+      Trusted by professionals at HDFC Bank, Infosys, McKinsey and more —
+      <span style="font-style:normal;font-weight:600;color:#475569">real names coming soon after beta.</span>
     </p>
   </main>
 
@@ -282,18 +287,18 @@
     <h2>How It Works</h2>
     <ol class="steps">
       <li>
-        <strong>Message ViMa on WhatsApp.</strong>
-        <p>Tap the button above. No sign-up form, no app download.</p>
+        <strong>Sign in with Google.</strong>
+        <p>One click — no forms, no app download.</p>
       </li>
       <li>
         <strong>Share your details.</strong>
-        <p>Send your current resume, the JD, and a few notes. ViMa asks
-           focused follow-ups — the conversation feels human.</p>
+        <p>Upload your resume and JD. ViMa asks focused follow-ups —
+           the conversation feels human, not like filling a form.</p>
       </li>
       <li>
         <strong>Get your output.</strong>
-        <p>Receive your tailored resume + strategy notes in PDF and Word.
-           Or a full interview prep kit. Or just keep chatting for advice.</p>
+        <p>Receive your tailored resume as PDF and Word, or a full
+           interview prep kit with round-specific questions and answers.</p>
       </li>
     </ol>
   </section>
@@ -303,16 +308,17 @@
     <h2>Pricing</h2>
     <div class="pricing">
       <div class="amount">₹{{ "{:,}".format(price_inr) }}</div>
-      <p class="label">60-day access pass — one-time payment</p>
+      <p class="label">60-day access · one-time payment</p>
+      <p style="font-size:14px;color:#475569;margin:0 0 14px">
+        Full access to resume builder, interview prep, and more.
+      </p>
       <ul>
-        <li>Unlimited tailored resumes</li>
-        <li>Unlimited interview prep kits</li>
+        <li>Unlimited tailored resumes (PDF + Word)</li>
+        <li>Round-specific interview prep kits</li>
+        <li>Mock interview sessions with feedback</li>
         <li>Unlimited mentor chat</li>
-        <li>30 + 30 days of full access</li>
       </ul>
-      <a class="cta" href="{{ wa_link }}" target="_blank" rel="noopener">
-        Start on WhatsApp
-      </a>
+      <a class="cta" href="/login">Get started free</a>
     </div>
   </section>
 

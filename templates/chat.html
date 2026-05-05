@@ -1,0 +1,1649 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#F8F4EB" />
+  <title>ViMa — Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23B8841F'/%3E%3Ctext x='50' y='66' font-family='Georgia,serif' font-size='56' font-weight='700' fill='%23F8F4EB' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E" />
+
+  <style>
+    :root {
+      --bg:       #F8F4EB;
+      --primary:  #2A2A2A;
+      --accent:   #B8841F;
+      --accent-lt:#FDF3E3;
+      --surface:  #FFFFFF;
+      --muted:    #6B6B6B;
+      --border:   #E5DDD0;
+    }
+
+    html, body { height: 100%; overflow: hidden; background: var(--bg); }
+
+    /* ── Desktop centering — feels like a phone on wide screens ─── */
+    @media (min-width: 768px) {
+      body { background: #EDE8DE; } /* slightly darker linen fills the sides */
+      #shell {
+        box-shadow: 0 0 0 1px rgba(42,42,42,0.06),
+                    0 8px 40px rgba(42,42,42,0.14);
+      }
+      #welcome-overlay {
+        max-width: 480px;
+        left: 50%;
+        transform: translateX(-50%);
+        right: auto;
+      }
+    }
+
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout shell ────────────────────────────────────────────── */
+    #shell {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--bg);
+      position: relative;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────── */
+    #header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px 10px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      z-index: 10;
+    }
+    .logo {
+      font-family: "Fraunces", Georgia, serif;
+      font-weight: 700;
+      font-size: 22px;
+      color: var(--primary);
+      letter-spacing: -0.3px;
+      line-height: 1;
+    }
+    .logo span { color: var(--accent); }
+
+    /* Progress pill */
+    #progress-pill {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 3px 10px;
+      white-space: nowrap;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Avatar + dropdown */
+    .avatar-btn {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      flex-shrink: 0;
+      background: var(--accent-lt);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-initials {
+      font-size: 13px; font-weight: 600; color: var(--accent);
+      font-family: "Inter", sans-serif;
+      pointer-events: none;
+    }
+    .dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(42,42,42,0.12);
+      min-width: 160px;
+      z-index: 100;
+      overflow: hidden;
+    }
+    .dropdown-item {
+      display: block;
+      width: 100%;
+      padding: 11px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--primary);
+      background: none;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .dropdown-item:hover { background: var(--bg); }
+    .dropdown-item.danger { color: #C0392B; }
+    .dropdown-divider { height: 1px; background: var(--border); }
+
+    /* ── Reconnect banner ────────────────────────────────────────── */
+    #reconnect-banner {
+      flex-shrink: 0;
+      display: none;
+      background: #FEF3CD;
+      border-bottom: 1px solid #F5D76E;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #7D5A00;
+      text-align: center;
+    }
+    #reconnect-banner.visible { display: block; }
+
+    /* ── Message area ────────────────────────────────────────────── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── Quick replies strip ─────────────────────────────────────── */
+    #quick-replies {
+      flex-shrink: 0;
+      display: none;
+      gap: 8px;
+      padding: 8px 12px 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      flex-wrap: wrap;
+    }
+    #quick-replies.visible { display: flex; }
+    #quick-replies::-webkit-scrollbar { display: none; }
+    .qr-pill {
+      flex-shrink: 0;
+      padding: 7px 16px;
+      border: 1.5px solid var(--accent);
+      border-radius: 100px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--primary);
+      background: var(--surface);
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+      white-space: nowrap;
+    }
+    .qr-pill:active, .qr-pill:hover { background: var(--accent); color: #fff; }
+
+    /* ── Input bar ───────────────────────────────────────────────── */
+    #input-bar {
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+    }
+    .bar-icon-btn {
+      width: 38px; height: 38px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      border: none; background: none;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 50%;
+      transition: background 0.12s, color 0.12s;
+    }
+    .bar-icon-btn:hover { background: var(--bg); color: var(--primary); }
+    .bar-icon-btn.recording { color: #E74C3C; background: #FDECEA; }
+
+    #text-input {
+      flex: 1;
+      min-height: 38px;
+      max-height: 120px;
+      padding: 9px 14px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      font-family: "Inter", sans-serif;
+      font-size: 15px;
+      color: var(--primary);
+      resize: none;
+      outline: none;
+      line-height: 1.4;
+      overflow-y: auto;
+      transition: border-color 0.15s;
+    }
+    #text-input:focus { border-color: var(--accent); }
+    #text-input::placeholder { color: #B0A898; }
+
+    #send-btn {
+      width: 38px; height: 38px;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.12s, transform 0.08s;
+    }
+    #send-btn:hover { background: #A3741A; }
+    #send-btn:active { transform: scale(0.92); }
+    #send-btn:disabled { background: #D4B896; cursor: not-allowed; }
+    #file-input { display: none; }
+
+    /* ── Message bubbles ─────────────────────────────────────────── */
+    .msg-row {
+      display: flex;
+      flex-direction: column;
+      max-width: 82%;
+      margin-bottom: 4px;
+    }
+    .msg-row.vima { align-self: flex-start; align-items: flex-start; }
+    .msg-row.user { align-self: flex-end;   align-items: flex-end; }
+
+    .msg-sender {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 3px;
+      padding-left: 2px;
+    }
+
+    .bubble {
+      border-radius: 18px;
+      padding: 10px 14px;
+      font-size: 14.5px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .bubble.vima {
+      background: var(--surface);
+      color: var(--primary);
+      box-shadow: 0 1px 3px rgba(42,42,42,0.08);
+      border-bottom-left-radius: 4px;
+    }
+    .bubble.user {
+      background: var(--accent-lt);
+      color: var(--primary);
+      border-bottom-right-radius: 4px;
+    }
+
+    /* WhatsApp-style bold/italic from *text* and _text_ */
+    .bubble b { font-weight: 600; }
+    .bubble i { font-style: italic; }
+
+    .msg-time {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+      padding: 0 2px;
+    }
+
+    /* ── Typing indicator ────────────────────────────────────────── */
+    .typing-bubble {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 12px 16px;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      background: #C0B8AC;
+      border-radius: 50%;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+      40%            { transform: scale(1);   opacity: 1; }
+    }
+
+    /* ── Document card ───────────────────────────────────────────── */
+    .doc-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 260px;
+      box-shadow: 0 1px 3px rgba(42,42,42,0.06);
+    }
+    .doc-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .doc-icon {
+      width: 38px; height: 38px;
+      background: var(--accent-lt);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: var(--accent);
+    }
+    .doc-info { flex: 1; min-width: 0; }
+    .doc-name {
+      font-size: 13px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .doc-size { font-size: 11.5px; color: var(--muted); }
+    .doc-actions { display: flex; gap: 8px; }
+    .doc-btn {
+      flex: 1;
+      padding: 7px 0;
+      border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      border: 1.5px solid var(--accent);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: background 0.12s, color 0.12s;
+    }
+    .doc-btn.outline { background: var(--surface); color: var(--accent); }
+    .doc-btn.filled  { background: var(--accent);  color: #fff; border-color: var(--accent); }
+    .doc-btn:hover.outline { background: var(--accent-lt); }
+    .doc-btn:hover.filled  { background: #A3741A; }
+
+    /* ── Payment card ────────────────────────────────────────────── */
+    .pay-card {
+      background: linear-gradient(135deg, #FFFBF3 0%, #FDF3E3 100%);
+      border: 1.5px solid var(--accent);
+      border-radius: 16px;
+      padding: 18px 18px 16px;
+      max-width: 260px;
+      box-shadow: 0 2px 8px rgba(184,132,31,0.12);
+    }
+    .pay-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 100px;
+      margin-bottom: 10px;
+    }
+    .pay-title {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 3px;
+    }
+    .pay-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .pay-btn {
+      display: block;
+      width: 100%;
+      padding: 11px;
+      background: var(--accent);
+      color: #fff;
+      font-family: "Inter", sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.12s;
+    }
+    .pay-btn:hover { background: #A3741A; }
+    .pay-btn:disabled { background: #D4B896; cursor: not-allowed; }
+    .pay-error {
+      margin-top: 8px;
+      font-size: 12.5px;
+      color: #C0392B;
+      display: none;
+    }
+    .pay-error.visible { display: block; }
+
+    /* ── Upload progress bar ─────────────────────────────────────── */
+    #upload-bar {
+      display: none;
+      flex-shrink: 0;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 16px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    #upload-bar.visible { display: flex; }
+    #upload-filename {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+      color: var(--primary);
+    }
+    #upload-track {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      min-width: 60px;
+    }
+    #upload-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.15s ease;
+    }
+    #upload-pct { font-variant-numeric: tabular-nums; min-width: 32px; text-align: right; }
+
+    /* ── Voice recording overlay ─────────────────────────────────── */
+    #voice-bar {
+      display: none;
+      flex-shrink: 0;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      background: #FDECEA;
+      border-top: 1px solid #F5C6C2;
+      font-size: 13px;
+      font-weight: 500;
+      color: #C0392B;
+    }
+    #voice-bar.visible { display: flex; }
+    .voice-dot {
+      width: 8px; height: 8px;
+      background: #E74C3C;
+      border-radius: 50%;
+      animation: blink 1s step-end infinite;
+      flex-shrink: 0;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    #voice-timer { font-variant-numeric: tabular-nums; }
+    #voice-hint { margin-left: auto; font-size: 12px; font-weight: 400; color: #A93226; }
+
+    /* Input bar status text (Transcribing...) */
+    #input-status {
+      display: none;
+      flex-shrink: 0;
+      padding: 5px 16px;
+      font-size: 12.5px;
+      color: var(--muted);
+      font-style: italic;
+      background: var(--surface);
+    }
+    #input-status.visible { display: block; }
+
+    /* ── Skeleton loading screen ─────────────────────────────── */
+    #skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 20px 16px;
+    }
+    #skeleton.hidden { display: none; }
+    .skel-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+    }
+    .skel-row.right { flex-direction: row-reverse; }
+    .skel-bubble {
+      border-radius: 16px;
+      background: linear-gradient(90deg, #EDE8DE 25%, #E4DED2 50%, #EDE8DE 75%);
+      background-size: 200% 100%;
+      animation: skel-shimmer 1.4s ease-in-out infinite;
+    }
+    .skel-row.left  .skel-bubble { border-bottom-left-radius: 4px; }
+    .skel-row.right .skel-bubble { border-bottom-right-radius: 4px; }
+    @keyframes skel-shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Connection-error banner ──────────────────────────────── */
+    #conn-error-banner {
+      display: none;
+      flex-shrink: 0;
+      background: var(--accent-lt);
+      border-bottom: 1px solid #E8C97A;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #7A5A00;
+      text-align: center;
+    }
+    #conn-error-banner.visible { display: block; }
+
+    /* ── Upload button spinner ────────────────────────────────── */
+    .bar-icon-btn.uploading { pointer-events: none; color: var(--accent); }
+    .bar-icon-btn.uploading svg { animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Mic button: transcribing state ──────────────────────── */
+    .bar-icon-btn.transcribing { color: var(--accent); pointer-events: none; }
+    .bar-icon-btn.transcribing svg { animation: spin 0.7s linear infinite; }
+
+    /* ── Welcome overlay ─────────────────────────────────────────── */
+    #welcome-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 28px 40px;
+      text-align: center;
+      overflow-y: auto;
+    }
+    #welcome-overlay.hidden { display: none; }
+    .wlc-logo {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .wlc-logo span { color: var(--accent); }
+    .wlc-tagline {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+    .wlc-greeting {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .wlc-value {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 300px;
+      margin-bottom: 28px;
+    }
+    .wlc-features {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+      max-width: 280px;
+      margin-bottom: 28px;
+      text-align: left;
+    }
+    .wlc-feature {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .wlc-feature-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: var(--accent-lt);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: var(--accent);
+    }
+    .wlc-feature-text strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .wlc-feature-text span {
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .wlc-price {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 22px;
+    }
+    .wlc-price strong { color: var(--primary); }
+    .wlc-start-btn {
+      width: 100%;
+      max-width: 280px;
+      padding: 16px 0;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: "Inter", sans-serif;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      letter-spacing: 0.01em;
+    }
+    .wlc-start-btn:active { background: #A3741A; transform: scale(0.98); }
+  </style>
+</head>
+
+<body>
+
+<!-- ── Welcome overlay (first-time users) ──────────────────────────── -->
+<div id="welcome-overlay" class="hidden">
+  <div class="wlc-logo">Vi<span>Ma</span></div>
+  <div class="wlc-tagline">AI Career Coach</div>
+  <div class="wlc-greeting" id="wlc-greeting">Welcome!</div>
+  <p class="wlc-value">I'll help you land the role you deserve — resume, interview prep, and more.</p>
+
+  <div class="wlc-features">
+    <div class="wlc-feature">
+      <div class="wlc-feature-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+        </svg>
+      </div>
+      <div class="wlc-feature-text">
+        <strong>Tailored Resume</strong>
+        <span>ATS-optimised, role-specific rewrite</span>
+      </div>
+    </div>
+    <div class="wlc-feature">
+      <div class="wlc-feature-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="wlc-feature-text">
+        <strong>Interview Prep</strong>
+        <span>Round-specific questions + mock sessions</span>
+      </div>
+    </div>
+    <div class="wlc-feature">
+      <div class="wlc-feature-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </div>
+      <div class="wlc-feature-text">
+        <strong>Trusted Mentor</strong>
+        <span>Honest feedback, no sugarcoating</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wlc-price"><strong>₹1,799 for 60 days</strong> · Cancel anytime</div>
+  <button class="wlc-start-btn" id="wlc-start-btn">Start chatting</button>
+</div>
+
+<div id="shell" x-data="vimaChat()" x-init="init()">
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <header id="header">
+    <div class="logo">Vi<span>Ma</span></div>
+
+    <div id="progress-pill" x-text="progressLabel" x-show="progressLabel"></div>
+
+    <!-- Avatar + dropdown -->
+    <div style="position:relative">
+      <button class="avatar-btn" @click="dropdownOpen = !dropdownOpen" @keydown.escape="dropdownOpen = false" aria-label="Account menu">
+        <template x-if="userAvatar">
+          <img :src="userAvatar" :alt="userName" referrerpolicy="no-referrer" />
+        </template>
+        <template x-if="!userAvatar">
+          <span class="avatar-initials" x-text="initials"></span>
+        </template>
+      </button>
+
+      <div class="dropdown" x-show="dropdownOpen" @click.outside="dropdownOpen = false"
+           x-transition:enter="transition ease-out duration-100"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="transition ease-in duration-75"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           style="display:none">
+        <div style="padding:12px 16px 8px">
+          <div style="font-size:13px;font-weight:600" x-text="userName"></div>
+          <div style="font-size:12px;color:var(--muted)" x-text="userEmail"></div>
+        </div>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="/dashboard">Dashboard</a>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item danger" @click="logout()">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Reconnect banner ────────────────────────────────────────── -->
+  <div id="reconnect-banner" :class="{ visible: !wsConnected && !connFailed }">
+    Reconnecting…
+  </div>
+
+  <!-- ── Connection-error banner (shown after 3 failed retries) ── -->
+  <div id="conn-error-banner">
+    Having trouble connecting — <a href="javascript:location.reload()" style="color:inherit;font-weight:700;text-decoration:underline">refresh to retry</a>
+  </div>
+
+  <!-- ── Skeleton (shown while history is loading) ─────────────── -->
+  <div id="skeleton">
+    <div class="skel-row left">
+      <div class="skel-bubble" style="width:58%;height:42px"></div>
+    </div>
+    <div class="skel-row right">
+      <div class="skel-bubble" style="width:44%;height:34px"></div>
+    </div>
+    <div class="skel-row left">
+      <div class="skel-bubble" style="width:72%;height:56px"></div>
+    </div>
+  </div>
+
+  <!-- ── Messages ───────────────────────────────────────────────── -->
+  <div id="messages" @click="dropdownOpen = false" style="display:none">
+    <!-- Populated by _loadHistory() then live WS events -->
+  </div>
+
+  <!-- ── Quick replies ──────────────────────────────────────────── -->
+  <div id="quick-replies"></div>
+
+  <!-- ── Upload progress bar (shown while file is uploading) ──────── -->
+  <div id="upload-bar">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--accent)">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+    <span id="upload-filename">filename.pdf</span>
+    <div id="upload-track"><div id="upload-fill"></div></div>
+    <span id="upload-pct">0%</span>
+  </div>
+
+  <!-- ── Voice recording bar (shown while mic is held) ────────────── -->
+  <div id="voice-bar">
+    <span class="voice-dot"></span>
+    <span id="voice-timer">0:00</span>
+    <span id="voice-hint">Release to send</span>
+  </div>
+
+  <!-- ── Input status line (Transcribing…) ─────────────────────────── -->
+  <div id="input-status">Transcribing…</div>
+
+  <!-- ── Input bar ──────────────────────────────────────────────── -->
+  <div id="input-bar">
+    <input type="file" id="file-input"
+           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+           @change="handleFileSelect($event)" />
+
+    <!-- Paperclip — triggers hidden file input; spins while uploading -->
+    <button class="bar-icon-btn" :class="{ uploading: isUploading }"
+            @click="!isUploading && document.getElementById('file-input').click()"
+            :aria-label="isUploading ? 'Uploading…' : 'Attach file'">
+      <template x-if="!isUploading">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.44 11.05L12.25 20.24a5.5 5.5 0 0 1-7.78-7.78L14.1 2.82a3.67 3.67 0 0 1 5.19 5.19L9.58 17.64a1.83 1.83 0 0 1-2.59-2.59L15.8 6.24"/>
+        </svg>
+      </template>
+      <template x-if="isUploading">
+        <!-- Spinner circle -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+          <path d="M12 2a10 10 0 0 1 10 10"/>
+        </svg>
+      </template>
+    </button>
+
+    <!-- Mic — hold to record; spins while transcribing -->
+    <button class="bar-icon-btn"
+            :class="{ recording: isRecording, transcribing: isTranscribing }"
+            @mousedown.prevent="!isTranscribing && startRecording()"
+            @mouseup="!isTranscribing && stopRecording()"
+            @touchstart.prevent="!isTranscribing && startRecording()"
+            @touchend="!isTranscribing && stopRecording()"
+            @touchcancel="!isTranscribing && cancelRecording()"
+            :aria-label="isTranscribing ? 'Transcribing…' : isRecording ? 'Release to send voice' : 'Hold to record voice'">
+      <template x-if="!isTranscribing">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </template>
+      <template x-if="isTranscribing">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+          <path d="M12 2a10 10 0 0 1 10 10"/>
+        </svg>
+      </template>
+    </button>
+
+    <!-- Text input -->
+    <textarea
+      id="text-input"
+      placeholder="Message ViMa…"
+      rows="1"
+      @keydown.enter.exact.prevent="sendMessage()"
+      @keydown.enter.shift.exact="/* allow newline */"
+      @input="autoResize($event)"
+      x-model="inputText"
+    ></textarea>
+
+    <!-- Send -->
+    <button id="send-btn" @click="sendMessage()" :disabled="!inputText.trim() || !wsConnected" aria-label="Send">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+
+</div><!-- #shell -->
+
+<script>
+// ── Template data (server-injected) ────────────────────────────────────────
+const VIMA_USER = {
+  email:  {{ user_email | tojson | safe }},
+  name:   {{ user_name  | tojson | safe }},
+  avatar: {{ user_avatar | tojson | safe }},
+};
+const RAZORPAY_KEY = {{ razorpay_key_id | tojson | safe }};
+const PRICE_PAISE  = {{ price_paise | int }};
+const PRICE_INR    = {{ price_inr | int }};
+
+// ── Alpine component ────────────────────────────────────────────────────────
+function vimaChat() {
+  return {
+    // State
+    userEmail:     VIMA_USER.email,
+    userName:      VIMA_USER.name || VIMA_USER.email.split('@')[0],
+    userAvatar:    VIMA_USER.avatar,
+    inputText:     '',
+    dropdownOpen:  false,
+    wsConnected:   false,
+    connFailed:    false,
+    isRecording:   false,
+    isUploading:   false,
+    isTranscribing: false,
+    progressLabel: '',
+
+    // Internals (not reactive — managed imperatively)
+    _ws:                  null,
+    _reconnectDelay:      1000,
+    _reconnectTimer:      null,
+    _retryCount:          0,
+    _typingEl:            null,
+    _pendingPayment:      null,
+    _mediaRecorder:       null,
+    _voiceStream:         null,
+    _voiceChunks:         null,
+    _voiceStart:          0,
+    _voiceTimerInterval:  null,
+
+    get initials() {
+      const n = this.userName || this.userEmail;
+      return n.slice(0, 2).toUpperCase();
+    },
+
+    // ── Lifecycle ──────────────────────────────────────────────────
+    async init() {
+      // 1. Load conversation history and render it before connecting WS.
+      await this._loadHistory();
+
+      // 2. Hide skeleton, reveal messages pane.
+      document.getElementById('skeleton').classList.add('hidden');
+      document.getElementById('messages').style.display = '';
+
+      // 3. Fetch current flow state for the progress pill.
+      await this._refreshState();
+
+      // 4. Connect WebSocket.
+      this.connect();
+
+      // 5. Show welcome overlay for first-timers (checked after history load
+      //    so we know whether they have any prior messages).
+      this._maybeShowWelcome();
+    },
+
+    async _loadHistory() {
+      try {
+        const r = await fetch('/api/user/history');
+        if (!r.ok) return;
+        const { messages } = await r.json();
+        if (!messages || !messages.length) return;
+
+        // Remove the "Today" date divider placeholder — we'll add a real one.
+        const existing = document.querySelector('#messages [data-date-divider]');
+        if (existing) existing.remove();
+
+        // Group by date and insert dividers.
+        let lastDate = null;
+        for (const m of messages) {
+          const d = m.created_at ? new Date(m.created_at) : null;
+          const dateStr = d ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+          if (dateStr && dateStr !== lastDate) {
+            this._insertDateDivider(dateStr);
+            lastDate = dateStr;
+          }
+          if (m.role === 'user') {
+            this.appendUser(m.content, /*scroll=*/false);
+          } else {
+            this.appendVima(m.content, d ? d.getTime() / 1000 : null, /*scroll=*/false);
+          }
+        }
+        this._scrollBottom();
+      } catch(e) { /* history load failure is non-fatal */ }
+    },
+
+    _insertDateDivider(label) {
+      const el = document.createElement('div');
+      el.dataset.dateDivider = '1';
+      el.style.cssText = 'text-align:center;font-size:11px;color:var(--muted);margin:4px 0 10px;font-weight:500';
+      el.textContent = label;
+      document.getElementById('messages').appendChild(el);
+    },
+
+    async _refreshState() {
+      try {
+        const r = await fetch('/api/user/state');
+        if (!r.ok) return;
+        const d = await r.json();
+        this.progressLabel = d.label || '';
+      } catch(e) { /* non-fatal */ }
+    },
+
+    _maybeShowWelcome() {
+      const key = 'vima_seen_welcome_' + this.userEmail;
+      if (localStorage.getItem(key)) return;
+
+      // Only show to users with no prior messages.
+      const msgContainer = document.getElementById('messages');
+      const hasMsgs = msgContainer && msgContainer.querySelectorAll('.msg-row').length > 0;
+      if (hasMsgs) {
+        localStorage.setItem(key, '1');
+        return;
+      }
+
+      // Personalise greeting with first name.
+      const firstName = (this.userName || '').split(' ')[0] || 'there';
+      const greetEl = document.getElementById('wlc-greeting');
+      if (greetEl) greetEl.textContent = `Welcome, ${firstName}!`;
+
+      const overlay = document.getElementById('welcome-overlay');
+      if (overlay) overlay.classList.remove('hidden');
+
+      const btn = document.getElementById('wlc-start-btn');
+      if (btn) btn.addEventListener('click', () => this.dismissWelcome());
+    },
+
+    dismissWelcome() {
+      const key = 'vima_seen_welcome_' + this.userEmail;
+      localStorage.setItem(key, '1');
+      const overlay = document.getElementById('welcome-overlay');
+      if (overlay) overlay.classList.add('hidden');
+
+      // Trigger ViMa's welcome message via WS. If WS isn't open yet, wait.
+      const fire = () => {
+        if (this.wsConnected) {
+          this._ws.send(JSON.stringify({ type: 'message', text: '__welcome__' }));
+        } else {
+          setTimeout(fire, 200);
+        }
+      };
+      fire();
+    },
+
+    // ── WebSocket ──────────────────────────────────────────────────
+    connect() {
+      if (this._ws) {
+        try { this._ws.close(); } catch(e) {}
+      }
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const ws = new WebSocket(`${proto}://${location.host}/ws/chat`);
+      this._ws = ws;
+
+      ws.onopen = () => {
+        this.wsConnected = true;
+        this.connFailed  = false;
+        this._reconnectDelay = 1000;
+        this._retryCount     = 0;
+        document.getElementById('conn-error-banner').classList.remove('visible');
+        if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+      };
+
+      ws.onmessage = (ev) => {
+        let msg;
+        try { msg = JSON.parse(ev.data); } catch(e) { return; }
+        this.handleEvent(msg);
+      };
+
+      ws.onclose = () => {
+        this.wsConnected = false;
+        this._scheduleReconnect();
+      };
+
+      ws.onerror = () => {
+        this.wsConnected = false;
+      };
+    },
+
+    _scheduleReconnect() {
+      if (this._reconnectTimer) return;
+      this._retryCount++;
+      if (this._retryCount > 3) {
+        this.connFailed = true;
+        document.getElementById('conn-error-banner').classList.add('visible');
+        return;
+      }
+      const delay = this._reconnectDelay;
+      this._reconnectDelay = Math.min(this._reconnectDelay * 2, 30000);
+      this._reconnectTimer = setTimeout(() => {
+        this._reconnectTimer = null;
+        this.connect();
+      }, delay);
+    },
+
+    // ── Inbound event dispatch ─────────────────────────────────────
+    handleEvent(msg) {
+      switch (msg.type) {
+        case 'text':
+          this.removeTyping();
+          this.appendVima(msg.text, msg.ts);
+          this._refreshState();
+          break;
+        case 'typing':
+          this.showTyping();
+          break;
+        case 'document':
+          this.removeTyping();
+          this.appendDocCard(msg);
+          this._refreshState();
+          break;
+        case 'payment':
+          this.removeTyping();
+          this.appendPayCard(msg);
+          break;
+        case 'quick_replies':
+          this.removeTyping();
+          if (msg.text) this.appendVima(msg.text, msg.ts);
+          this.showQuickReplies(msg.options || []);
+          this._refreshState();
+          break;
+        case 'error':
+          this.removeTyping();
+          this.appendVima(msg.message || 'Something went wrong, please try again.', null);
+          break;
+        case 'ping':
+          break; // keepalive — ignore
+        default:
+          break;
+      }
+    },
+
+    // ── Send ────────────────────────────────────────────────────────
+    sendMessage() {
+      const text = this.inputText.trim();
+      if (!text || !this.wsConnected) return;
+
+      this.hideQuickReplies();
+      this.appendUser(text);
+      this.inputText = '';
+      this._resetTextarea();
+
+      this._ws.send(JSON.stringify({ type: 'message', text }));
+    },
+
+    sendQuickReply(title) {
+      this.hideQuickReplies();
+      this.appendUser(title);
+      if (this.wsConnected) {
+        this._ws.send(JSON.stringify({ type: 'message', text: title }));
+      }
+    },
+
+    // ── DOM helpers ─────────────────────────────────────────────────
+    appendUser(text, scroll = true) {
+      const row = this._makeRow('user');
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble user';
+      bubble.innerHTML = this._formatText(text);
+      row.appendChild(bubble);
+      row.appendChild(this._timeEl());
+      this._mount(row, scroll);
+    },
+
+    appendVima(text, ts, scroll = true) {
+      const row = this._makeRow('vima');
+      const sender = document.createElement('div');
+      sender.className = 'msg-sender';
+      sender.textContent = 'ViMa';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble vima';
+      bubble.innerHTML = this._formatText(text);
+      row.appendChild(sender);
+      row.appendChild(bubble);
+      row.appendChild(this._timeEl(ts));
+      this._mount(row, scroll);
+    },
+
+    appendDocCard(msg) {
+      const row = this._makeRow('vima');
+      const sender = document.createElement('div');
+      sender.className = 'msg-sender';
+      sender.textContent = 'ViMa';
+
+      const card = document.createElement('div');
+      card.className = 'doc-card';
+
+      const filename = msg.filename || 'Document';
+      const ext = filename.split('.').pop().toLowerCase();
+      const extLabel = ext.toUpperCase();
+      const sizeLabel = msg.size ? this._formatSize(msg.size) : '';
+
+      // Icon colour: PDF=red, DOCX=blue, image=green, other=accent.
+      const iconColor = ext === 'pdf' ? '#E53E3E'
+                      : (ext === 'docx' || ext === 'doc') ? '#2B6CB0'
+                      : (ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp') ? '#276749'
+                      : 'var(--accent)';
+
+      const previewId  = 'prev-' + Math.random().toString(36).slice(2);
+      const downloadId = 'dl-'   + Math.random().toString(36).slice(2);
+
+      card.innerHTML = `
+        <div class="doc-meta">
+          <div class="doc-icon" style="background:${iconColor}18;color:${iconColor}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <text x="6" y="19" font-size="5" fill="${iconColor}" stroke="none" font-family="sans-serif" font-weight="700">${this._esc(extLabel)}</text>
+            </svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-name">${this._esc(filename)}</div>
+            ${sizeLabel ? `<div class="doc-size">${this._esc(sizeLabel)}</div>` : ''}
+          </div>
+        </div>
+        ${msg.caption ? `<div style="font-size:13px;color:var(--muted)">${this._esc(msg.caption)}</div>` : ''}
+        <div class="doc-actions">
+          <button class="doc-btn outline" id="${previewId}">Preview</button>
+          <a class="doc-btn filled" id="${downloadId}" href="${this._esc(msg.url)}" download="${this._esc(filename)}">Download</a>
+        </div>
+      `;
+
+      row.appendChild(sender);
+      row.appendChild(card);
+      row.appendChild(this._timeEl(msg.ts));
+      this._mount(row);
+
+      // Preview: fetch a fresh signed URL then open it, so expired links still work.
+      const previewBtn = document.getElementById(previewId);
+      if (previewBtn) {
+        previewBtn.addEventListener('click', () => {
+          previewBtn.textContent = '…';
+          previewBtn.disabled = true;
+          const storagePath = msg.storage_path || '';
+          const refreshUrl  = storagePath
+            ? `/api/files/refresh-url?path=${encodeURIComponent(storagePath)}`
+            : null;
+          const open = (url) => { window.open(url, '_blank', 'noopener'); };
+          if (!refreshUrl) {
+            open(msg.url);
+            previewBtn.textContent = 'Preview';
+            previewBtn.disabled = false;
+            return;
+          }
+          fetch(refreshUrl)
+            .then(r => r.ok ? r.json() : Promise.reject(r))
+            .then(d => { open(d.url || msg.url); })
+            .catch(() => { open(msg.url); })
+            .finally(() => {
+              previewBtn.textContent = 'Preview';
+              previewBtn.disabled = false;
+            });
+        });
+      }
+    },
+
+    appendPayCard(msg) {
+      const row = this._makeRow('vima');
+      const sender = document.createElement('div');
+      sender.className = 'msg-sender';
+      sender.textContent = 'ViMa';
+
+      const card = document.createElement('div');
+      card.className = 'pay-card';
+
+      const btnId  = 'pay-btn-' + Math.random().toString(36).slice(2);
+      const errId  = 'pay-err-' + Math.random().toString(36).slice(2);
+      const amount = msg.amount || PRICE_PAISE;
+      const amtInr = Math.round(amount / 100);
+
+      card.innerHTML = `
+        <div class="pay-badge">Unlock Access</div>
+        <div class="pay-title">Unlock ViMa Access</div>
+        <div class="pay-sub">60-day full access · ₹${amtInr.toLocaleString('en-IN')}</div>
+        <button class="pay-btn" id="${btnId}">Pay Now</button>
+        <div class="pay-error" id="${errId}"></div>
+      `;
+
+      row.appendChild(sender);
+      row.appendChild(card);
+      row.appendChild(this._timeEl(msg.ts));
+      this._mount(row);
+
+      // Wire up Razorpay after mount.
+      const payBtn = document.getElementById(btnId);
+      const errEl  = document.getElementById(errId);
+      if (payBtn) {
+        payBtn.addEventListener('click', () => {
+          this.openRazorpay({ btn: payBtn, errEl, msg });
+        });
+      }
+    },
+
+    openRazorpay({ btn, errEl, msg }) {
+      if (!window.Razorpay) {
+        errEl.textContent = 'Payment system unavailable. Please try again.';
+        errEl.classList.add('visible');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Opening…';
+      errEl.classList.remove('visible');
+
+      // Fetch a fresh Razorpay order from the backend so we get a real order_id.
+      fetch('/api/payment/create-order', { method: 'POST' })
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(order => {
+          const key    = order.key_id || msg.key_id || RAZORPAY_KEY;
+          const amount = order.amount || msg.amount || PRICE_PAISE;
+
+          const opts = {
+            key,
+            amount,
+            currency:    order.currency || 'INR',
+            name:        'ViMa',
+            description: msg.description || '60-day full access',
+            order_id:    order.order_id,
+            prefill: {
+              name:  this.userName,
+              email: this.userEmail,
+            },
+            theme: { color: '#B8841F' },
+            handler: (response) => {
+              btn.textContent = 'Verifying…';
+              fetch('/api/payment/verify', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id:   response.razorpay_order_id,
+                  razorpay_signature:  response.razorpay_signature,
+                }),
+              })
+              .then(r => r.ok ? r.json() : Promise.reject(r))
+              .then(() => {
+                btn.textContent = 'Access Unlocked ✓';
+                btn.style.background = '#27AE60';
+                btn.disabled = true;
+              })
+              .catch(() => {
+                btn.disabled = false;
+                btn.textContent = 'Pay Now';
+                errEl.textContent = 'Payment verification failed. Please contact support.';
+                errEl.classList.add('visible');
+              });
+            },
+            modal: {
+              ondismiss: () => {
+                btn.disabled = false;
+                btn.textContent = 'Pay Now';
+              },
+            },
+          };
+
+          const rzp = new window.Razorpay(opts);
+          rzp.on('payment.failed', (resp) => {
+            btn.disabled = false;
+            btn.textContent = 'Pay Now';
+            errEl.textContent = resp.error?.description || 'Payment failed. Please try again.';
+            errEl.classList.add('visible');
+          });
+          rzp.open();
+        })
+        .catch(() => {
+          btn.disabled = false;
+          btn.textContent = 'Pay Now';
+          errEl.textContent = 'Could not connect to payment service. Please try again.';
+          errEl.classList.add('visible');
+        });
+    },
+
+    // ── Typing indicator ────────────────────────────────────────────
+    showTyping() {
+      if (this._typingEl) return; // already showing
+      const row = this._makeRow('vima');
+      const sender = document.createElement('div');
+      sender.className = 'msg-sender';
+      sender.textContent = 'ViMa';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble vima typing-bubble';
+      bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+      row.appendChild(sender);
+      row.appendChild(bubble);
+      this._typingEl = row;
+      this._mount(row);
+    },
+
+    removeTyping() {
+      if (this._typingEl) {
+        this._typingEl.remove();
+        this._typingEl = null;
+      }
+    },
+
+    // ── Quick replies ────────────────────────────────────────────────
+    showQuickReplies(options) {
+      const container = document.getElementById('quick-replies');
+      container.innerHTML = '';
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'qr-pill';
+        btn.textContent = opt.title || opt.id;
+        btn.addEventListener('click', () => this.sendQuickReply(opt.title || opt.id));
+        container.appendChild(btn);
+      });
+      container.classList.add('visible');
+    },
+
+    hideQuickReplies() {
+      const container = document.getElementById('quick-replies');
+      container.classList.remove('visible');
+      container.innerHTML = '';
+    },
+
+    // ── Misc actions ─────────────────────────────────────────────────
+    logout() {
+      this.dropdownOpen = false;
+      fetch('/api/auth/logout', { method: 'POST' })
+        .finally(() => { window.location.href = '/'; });
+    },
+
+    // ── File upload ──────────────────────────────────────────────────
+    handleFileSelect(event) {
+      const file = event.target.files[0];
+      event.target.value = '';  // reset so same file can be re-selected
+      if (!file) return;
+
+      const MAX = 10 * 1024 * 1024;
+      if (file.size > MAX) {
+        this.appendVima('File too large. Please attach a file under 10 MB.', null);
+        return;
+      }
+
+      const allowed = ['application/pdf',
+                       'application/msword',
+                       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                       'image/jpeg', 'image/png'];
+      if (!allowed.includes(file.type)) {
+        this.appendVima('Unsupported file type. Please send a PDF, Word doc, JPG or PNG.', null);
+        return;
+      }
+
+      this._uploadFile(file);
+    },
+
+    _uploadFile(file) {
+      // Show upload bar + spinner on paperclip button
+      const bar     = document.getElementById('upload-bar');
+      const nameEl  = document.getElementById('upload-filename');
+      const fill    = document.getElementById('upload-fill');
+      const pctEl   = document.getElementById('upload-pct');
+
+      nameEl.textContent = file.name;
+      fill.style.width   = '0%';
+      pctEl.textContent  = '0%';
+      bar.classList.add('visible');
+      this.isUploading = true;
+
+      const fd = new FormData();
+      fd.append('file', file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/chat/upload');
+
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        const pct = Math.round((e.loaded / e.total) * 100);
+        fill.style.width  = pct + '%';
+        pctEl.textContent = pct + '%';
+      };
+
+      xhr.onload = () => {
+        bar.classList.remove('visible');
+        this.isUploading = false;
+        if (xhr.status === 200) {
+          let resp = {};
+          try { resp = JSON.parse(xhr.responseText); } catch(e) {}
+          if (resp.success === false) {
+            // Server could read the file but extracted no text.
+            this.appendVima(resp.error || 'Could not read this file. Try a different format or paste the text directly.', null);
+          } else {
+            // Show a user bubble; backend already injected it into the flow.
+            const fname = resp.filename || file.name;
+            this.appendUser(`📎 ${fname}`);
+          }
+        } else {
+          let detail = 'Upload failed. Please try again.';
+          try { detail = JSON.parse(xhr.responseText).detail || detail; } catch(e) {}
+          this.appendVima(detail, null);
+        }
+      };
+
+      xhr.onerror = () => {
+        bar.classList.remove('visible');
+        this.isUploading = false;
+        this.appendVima('Upload failed — network error. Please try again.', null);
+      };
+
+      xhr.send(fd);
+    },
+
+    // ── Voice recording ──────────────────────────────────────────────
+    startRecording() {
+      if (this.isRecording) return;
+      if (!navigator.mediaDevices || !window.MediaRecorder) {
+        this.appendVima('Voice recording is not supported in this browser.', null);
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          this.isRecording = true;
+          this._voiceStream   = stream;
+          this._voiceChunks   = [];
+          this._voiceStart    = Date.now();
+
+          // Show recording bar + start timer
+          const vbar  = document.getElementById('voice-bar');
+          const timer = document.getElementById('voice-timer');
+          vbar.classList.add('visible');
+          this._voiceTimerInterval = setInterval(() => {
+            const secs = Math.floor((Date.now() - this._voiceStart) / 1000);
+            const m = Math.floor(secs / 60);
+            const s = String(secs % 60).padStart(2, '0');
+            timer.textContent = `${m}:${s}`;
+          }, 500);
+
+          const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+
+          const opts = mimeType ? { mimeType } : {};
+          this._mediaRecorder = new MediaRecorder(stream, opts);
+          this._mediaRecorder.ondataavailable = e => {
+            if (e.data && e.data.size > 0) this._voiceChunks.push(e.data);
+          };
+          this._mediaRecorder.start(100);  // collect in 100ms chunks
+        })
+        .catch(() => {
+          this.appendVima('Microphone access denied. Please allow mic permissions and try again.', null);
+        });
+    },
+
+    stopRecording() {
+      if (!this.isRecording || !this._mediaRecorder) return;
+      this._mediaRecorder.stop();
+      this._voiceStream.getTracks().forEach(t => t.stop());
+      clearInterval(this._voiceTimerInterval);
+
+      const vbar = document.getElementById('voice-bar');
+      vbar.classList.remove('visible');
+      this.isRecording = false;
+
+      const mimeType = this._mediaRecorder.mimeType || 'audio/webm';
+      const blob = new Blob(this._voiceChunks, { type: mimeType });
+      this._voiceChunks = [];
+
+      // Show "Transcribing…" — both in the status bar and via mic button spinner
+      const statusEl = document.getElementById('input-status');
+      statusEl.classList.add('visible');
+      this.isTranscribing = true;
+
+      const fd = new FormData();
+      fd.append('audio', blob, 'voice.webm');
+
+      fetch('/api/chat/voice', { method: 'POST', body: fd })
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(data => {
+          statusEl.classList.remove('visible');
+          this.isTranscribing = false;
+          if (data.success === false) {
+            this.appendVima(data.error || "Couldn't catch that — try typing instead.", null);
+            return;
+          }
+          const transcript = (data.transcript || '').trim();
+          if (transcript) {
+            // Fill the text input so the user can review before sending.
+            this.inputText = transcript;
+            this.$nextTick(() => {
+              const ta = document.getElementById('text-input');
+              if (ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; }
+            });
+          }
+        })
+        .catch(() => {
+          statusEl.classList.remove('visible');
+          this.isTranscribing = false;
+          this.appendVima('Voice transcription failed. Please type your message instead.', null);
+        });
+    },
+
+    cancelRecording() {
+      if (!this.isRecording || !this._mediaRecorder) return;
+      this._mediaRecorder.stop();
+      if (this._voiceStream) this._voiceStream.getTracks().forEach(t => t.stop());
+      clearInterval(this._voiceTimerInterval);
+      document.getElementById('voice-bar').classList.remove('visible');
+      this.isRecording  = false;
+      this._voiceChunks = [];
+    },
+
+    autoResize(event) {
+      const el = event.target;
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    },
+
+    _resetTextarea() {
+      const el = document.getElementById('text-input');
+      if (el) { el.style.height = 'auto'; }
+    },
+
+    // ── DOM utilities ─────────────────────────────────────────────────
+    _makeRow(side) {
+      const row = document.createElement('div');
+      row.className = `msg-row ${side}`;
+      return row;
+    },
+
+    _timeEl(ts) {
+      const el = document.createElement('div');
+      el.className = 'msg-time';
+      const d = ts ? new Date(ts * 1000) : new Date();
+      el.textContent = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      return el;
+    },
+
+    _mount(el, scroll = true) {
+      const container = document.getElementById('messages');
+      container.appendChild(el);
+      if (scroll) this._scrollBottom();
+    },
+
+    _scrollBottom() {
+      const container = document.getElementById('messages');
+      container.scrollTop = container.scrollHeight;
+    },
+
+    // Convert *bold* and _italic_ markers from WhatsApp-style formatting.
+    _formatText(text) {
+      if (!text) return '';
+      let s = this._esc(text);
+      // Bold: *text*
+      s = s.replace(/\*((?:[^*]|\n)+?)\*/g, '<b>$1</b>');
+      // Italic: _text_
+      s = s.replace(/_((?:[^_]|\n)+?)_/g, '<i>$1</i>');
+      // Line breaks (pre-wrap handles most, but convert \n to <br> for safety)
+      // Already handled by white-space:pre-wrap on .bubble
+      return s;
+    },
+
+    _esc(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    },
+
+    _formatSize(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    },
+  };
+}
+</script>
+</body>
+</html>
