@@ -991,6 +991,17 @@ async def _ws_receive(websocket: WebSocket, email: str, first_name: str) -> None
         if not text:
             continue
 
+        # Suppress __welcome__ if the user already has conversation history —
+        # _loadHistory() will have rendered it in the UI already.
+        if text == "__welcome__":
+            from models.database import recent_conversation as _recent_conv
+            try:
+                existing = await _recent_conv(email, limit=1)
+            except Exception:  # noqa: BLE001
+                existing = []
+            if existing:
+                continue
+
         try:
             await route_web_message(email, text, first_name=first_name)
         except Exception:  # noqa: BLE001

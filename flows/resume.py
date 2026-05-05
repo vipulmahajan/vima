@@ -595,27 +595,25 @@ async def _handle_proc2(
         except Exception as exc:  # noqa: BLE001
             log.warning("strategy note send failed: %s", exc)
 
-    # 4. Render PDF (GTK-optional) and DOCX in-memory.
-    pdf_bytes:  Optional[bytes] = None
+    # 4. Render PDF (best-effort) and DOCX in-memory.
+    # try_render_resume_pdf swallows all WeasyPrint/GTK failures and returns None.
+    pdf_bytes  = try_render_resume_pdf(resume_json or {})
     docx_bytes: Optional[bytes] = None
-
-    # try_render_resume_pdf returns None silently when GTK libs are missing.
-    pdf_bytes = try_render_resume_pdf(resume_json or {})
 
     try:
         docx_bytes = render_resume_docx(resume_json or {}, template="executive")
     except Exception as exc:  # noqa: BLE001
         log.exception("DOCX render failed: %s", exc)
 
-    if not pdf_bytes and not docx_bytes:
+    if not docx_bytes:
         return _text(sender,
-            "I drafted your resume — strategy note above. Both PDF and Word "
-            "renders hit a snag. Reply *retry* and I'll try again."
+            "I drafted your resume — strategy note above. The Word render hit "
+            "a snag. Reply *retry* and I'll try again."
         )
 
     await upsert_user_state(sender, {"resume_step": DONE})
 
-    # 5. Deliver via the channel-agnostic messenger.
+    # 5. Deliver — PDF silently skipped if unavailable, DOCX always sent.
     if pdf_bytes:
         try:
             await messenger.send_document(
@@ -627,24 +625,19 @@ async def _handle_proc2(
         except Exception as exc:  # noqa: BLE001
             log.warning("PDF delivery failed: %s", exc)
 
-    if docx_bytes:
-        docx_caption = (
-            "Your tailored resume is ready — here's your editable Word version."
-            if not pdf_bytes
-            else "And here's an editable Word version — feel free to tweak anything before submitting."
+    try:
+        await messenger.send_document(
+            sender,
+            docx_bytes,
+            filename="ViMa-Resume.docx",
+            caption=(
+                "Your tailored resume is ready — here's your editable Word version. "
+                "Feel free to tweak anything before submitting."
+            ),
         )
-        try:
-            await messenger.send_document(
-                sender,
-                docx_bytes,
-                filename="ViMa-Resume.docx",
-                caption=docx_caption,
-            )
-        except Exception as exc:  # noqa: BLE001
-            log.warning("DOCX delivery failed: %s", exc)
-        return None  # type: ignore[return-value]
+    except Exception as exc:  # noqa: BLE001
+        log.warning("DOCX delivery failed: %s", exc)
 
-    # PDF sent but DOCX failed — no DOCX to send, turn is complete.
     return None  # type: ignore[return-value]
 
 
@@ -712,6 +705,7 @@ _EDIT_KEYWORDS = {
     "highlight", "add", "change", "update", "more", "better", "fix",
     "include", "remove", "emphasise", "emphasize", "strengthen", "rewrite",
     "adjust", "tweak", "rephrase", "mention", "focus", "improve",
+    "shorten", "expand",
 }
 
 
@@ -725,7 +719,10 @@ async def _handle_done(
 ) -> dict[str, Any]:
     """After delivery, handle edit requests by regenerating with the user's feedback."""
     if not _is_edit_request(text):
-        return _resume_done(sender)
+        return _text(sender,
+            "Your resume is ready above. Reply *interview* to prep for this role, "
+            "or *menu* to start something new."
+        )
 
     messenger = await get_messenger(sender)
     try:
@@ -780,7 +777,7 @@ async def _handle_done(
             sender,
             docx_bytes,
             filename="ViMa-Resume-v2.docx",
-            caption="Here's your updated resume — let me know if you'd like anything else adjusted.",
+            caption="Here's your updated resume.",
         )
     except Exception as exc:  # noqa: BLE001
         log.warning("DOCX delivery failed (edit): %s", exc)

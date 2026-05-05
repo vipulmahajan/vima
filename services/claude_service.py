@@ -720,10 +720,8 @@ def _build_resume_user_payload(**fields: Any) -> str:
     if fields.get("edit_instruction"):
         sections += [
             "",
-            "── REVISION INSTRUCTION (from the candidate) ──",
-            fields["edit_instruction"],
-            "Apply this revision across the entire resume where relevant. "
-            "Keep everything else unchanged.",
+            f"USER REVISION REQUEST: {fields['edit_instruction']}. "
+            "Incorporate this specific change into the resume while keeping everything else strong.",
         ]
 
     sections += [

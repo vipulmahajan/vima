@@ -68,14 +68,12 @@ def render_resume_pdf(resume_data: dict[str, Any]) -> bytes:
 
 
 def try_render_resume_pdf(resume_data: dict[str, Any]) -> "bytes | None":
-    """Like render_resume_pdf but returns None on GTK/OSError instead of raising."""
+    """Render resume PDF, returning None on any failure instead of raising."""
     try:
         return render_resume_pdf(resume_data)
-    except Exception as exc:  # noqa: BLE001
-        if _is_gtk_error(exc):
-            _log.warning("PDF skipped — GTK runtime unavailable: %s", exc)
-            return None
-        raise
+    except (OSError, ImportError, Exception) as exc:  # noqa: BLE001
+        _log.warning("PDF render skipped: %s", exc)
+        return None
 
 
 def render_interview_report_pdf(report_data: dict[str, Any]) -> bytes:
@@ -104,14 +102,12 @@ def render_interview_prep_pdf(prep_data: dict[str, Any]) -> bytes:
 
 
 def try_render_interview_prep_pdf(prep_data: dict[str, Any]) -> "bytes | None":
-    """Like render_interview_prep_pdf but returns None on GTK/OSError instead of raising."""
+    """Render interview prep PDF, returning None on any failure instead of raising."""
     try:
         return render_interview_prep_pdf(prep_data)
-    except Exception as exc:  # noqa: BLE001
-        if _is_gtk_error(exc):
-            _log.warning("Interview prep PDF skipped — GTK runtime unavailable: %s", exc)
-            return None
-        raise
+    except (OSError, ImportError, Exception) as exc:  # noqa: BLE001
+        _log.warning("Interview prep PDF render skipped: %s", exc)
+        return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -481,7 +481,7 @@ def _welcome_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
         "Where are you in your career transition?\n\n"
         "*1.* Building a tailored resume\n"
         "*2.* Preparing for interviews\n\n"
-        "More stages coming soon — offer negotiation, first 90 days, and job search strategy."
+        "More coming soon — offer negotiation, first 90 days, and job search strategy."
     )
     return _text_reply(to, text)
 
@@ -492,7 +492,7 @@ def _menu_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
         f"{greeting} where are you in your career transition?\n\n"
         "*1.* Building a tailored resume\n"
         "*2.* Preparing for interviews\n\n"
-        "More stages coming soon — offer negotiation, first 90 days, and job search strategy."
+        "More coming soon — offer negotiation, first 90 days, and job search strategy."
     )
     return _text_reply(to, text)
 
