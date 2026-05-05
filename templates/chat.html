@@ -1642,10 +1642,17 @@ function vimaChat() {
       container.scrollTop = container.scrollHeight;
     },
 
-    // Convert *bold* and _italic_ markers from WhatsApp-style formatting.
+    // Convert *bold*, _italic_, and URLs in ViMa message text.
+    // Escape HTML first, then apply formatting so nothing in user-supplied
+    // text can inject markup.
     _formatText(text) {
       if (!text) return '';
       let s = this._esc(text);
+      // Linkify URLs (after escaping, so the href value is already entity-safe).
+      s = s.replace(
+        /(https?:\/\/[^\s<>"&]+)/g,
+        '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#B8841F;text-decoration:underline;">$1</a>'
+      );
       // Bold: *text*
       s = s.replace(/\*((?:[^*]|\n)+?)\*/g, '<b>$1</b>');
       // Italic: _text_

@@ -350,6 +350,13 @@ async def _handle_q3(
     url_match = URL_RE.search(text)
     if url_match:
         url = url_match.group(0).rstrip(".,);")
+        if re.search(r"linkedin\.com/jobs/", url, re.IGNORECASE):
+            return _text(sender,
+                "LinkedIn job pages are locked to logged-in users so I can't "
+                "read them directly. Could you copy and paste the job description "
+                "text? Just open the LinkedIn post, select all the text, and paste "
+                "it here — takes 30 seconds and gives me everything I need."
+            )
         await merge_user_state_data(sender, {"jd_source": "url", "jd_url": url})
         await upsert_user_state(sender, {"resume_step": RESUME_Q4})
         return _ask_q4(sender)
