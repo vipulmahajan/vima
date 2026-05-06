@@ -785,6 +785,20 @@ async def api_payment_verify(
 
     log.info("payment.verify activated user=%s payment=%s", _mask_email(user["email"]), payment_id)
 
+    # Push a confirmation message to the user's live WebSocket before resuming,
+    # so they see feedback immediately while generation runs.
+    try:
+        from services.web_messenger import _queue_for as _wm_queue
+        q = await _wm_queue(user_key)
+        import time as _time
+        q.put_nowait({
+            "type": "text",
+            "text": "Payment confirmed! Give me a moment to prepare your output...",
+            "ts":   _time.time(),
+        })
+    except Exception:  # noqa: BLE001
+        pass  # non-fatal; resume still runs
+
     # Resume any pending flow output (e.g. resume PDF queued behind paywall).
     try:
         await _resume_pending_output(user_key)
@@ -1339,6 +1353,172 @@ async def _resume_pending_output(user_id: str) -> bool:
         await messenger.send(reply)
 
     return True
+
+
+# ── Admin dashboard ─────────────────────────────────────────────────────────
+
+_ADMIN_COOKIE     = "vima_admin"
+_ADMIN_TTL_SHORT  = 8 * 3600        # 8 hours
+_ADMIN_TTL_LONG   = 30 * 24 * 3600  # 30 days
+
+
+def _check_admin_cookie(request: Request) -> bool:
+    """Return True if the request carries a valid admin session cookie."""
+    token = request.cookies.get(_ADMIN_COOKIE, "")
+    expected = (settings.admin_secret or "")
+    if not token or not expected:
+        return False
+    return secrets.compare_digest(token, expected)
+
+
+@app.get("/admin/logout")
+async def admin_logout(response: Response) -> RedirectResponse:
+    resp = RedirectResponse(url="/admin", status_code=303)
+    resp.delete_cookie(_ADMIN_COOKIE, path="/")
+    return resp
+
+
+@app.get("/admin")
+async def admin_overview(request: Request) -> HTMLResponse:
+    from models.database import get_admin_overview_stats, get_all_users_with_state
+    import datetime
+
+    if not _check_admin_cookie(request):
+        html = _site_env.get_template("admin_login.html").render(error=None)
+        return HTMLResponse(html)
+
+    stats = await get_admin_overview_stats()
+    users = await get_all_users_with_state()
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    def _is_stuck(u: dict) -> bool:
+        flow = u.get("flow", "idle")
+        step = u.get("resume_step") or u.get("interview_step") or ""
+        if flow == "idle" or step in ("delivered", "welcome", ""):
+            return False
+        updated = u.get("updated_at") or ""
+        if not updated:
+            return False
+        try:
+            ua = datetime.datetime.fromisoformat(updated.replace("Z", "+00:00"))
+            return (now - ua).total_seconds() > 86400
+        except Exception:  # noqa: BLE001
+            return False
+
+    for u in users:
+        u["stuck"] = _is_stuck(u)
+
+    html = _site_env.get_template("admin.html").render(stats=stats, users=users)
+    return HTMLResponse(html)
+
+
+@app.post("/admin")
+async def admin_login(request: Request) -> Response:
+    form = await request.form()
+    password   = (form.get("password") or "").strip()
+    remember   = bool(form.get("remember"))
+    expected   = (settings.admin_secret or "").strip()
+
+    if not expected or not password or not secrets.compare_digest(password, expected):
+        html = _site_env.get_template("admin_login.html").render(error="Incorrect password.")
+        return HTMLResponse(html, status_code=401)
+
+    ttl  = _ADMIN_TTL_LONG if remember else _ADMIN_TTL_SHORT
+    resp = RedirectResponse(url="/admin", status_code=303)
+    resp.set_cookie(
+        _ADMIN_COOKIE,
+        value    = expected,   # cookie value IS the secret — compare_digest on every request
+        max_age  = ttl,
+        httponly = True,
+        samesite = "lax",
+        secure   = settings.app_env.lower() == "production",
+        path     = "/",
+    )
+    return resp
+
+
+@app.get("/admin/user/{email:path}")
+async def admin_user_detail(email: str, request: Request) -> HTMLResponse:
+    from models.database import (
+        admin_get_user, get_user_artifacts, get_payment_history,
+    )
+    import datetime
+
+    if not _check_admin_cookie(request):
+        return RedirectResponse(url="/admin", status_code=303)
+
+    email = email.strip().lower()
+
+    from models.database import recent_conversation as _recent_conv
+    user_row, state, payments, artifacts, history = await asyncio.gather(
+        admin_get_user(email),
+        get_user_state(email),
+        get_payment_history(email),
+        get_user_artifacts(email),
+        _recent_conv(email, limit=20),
+    )
+
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    active_pay = next(
+        (p for p in payments if p.get("status") == "paid" and (p.get("period_end") or "") > now_iso),
+        None,
+    )
+
+    # Build signed URLs for artifacts.
+    from services.storage_service import StorageService
+    storage = StorageService()
+    for art in artifacts:
+        try:
+            art["signed_url"] = await storage.create_signed_url(art["storage_path"], ttl_seconds=900)
+        except Exception:  # noqa: BLE001
+            art["signed_url"] = ""
+
+    html = _site_env.get_template("admin_user.html").render(
+        user        = user_row or {"email": email},
+        state       = state,
+        data_json   = json.dumps(state.get("data") or {}, indent=2, ensure_ascii=False),
+        payments    = payments,
+        active_pay  = active_pay,
+        artifacts   = artifacts,
+        history     = history,
+    )
+    return HTMLResponse(html)
+
+
+@app.post("/admin/activate/{email:path}")
+async def admin_activate(email: str, request: Request) -> RedirectResponse:
+    if not _check_admin_cookie(request):
+        return RedirectResponse(url="/admin", status_code=303)
+
+    email = email.strip().lower()
+    await mark_subscription_active(
+        user_id      = email,
+        duration_days = 60,
+        payment_type  = "access_pass",
+    )
+    log.info("admin.activate email=%s", _mask_email(email))
+    try:
+        await _resume_pending_output(email)
+    except Exception:  # noqa: BLE001
+        log.exception("admin.activate resume_pending failed for %s", _mask_email(email))
+    return RedirectResponse(url=f"/admin/user/{email}", status_code=303)
+
+
+@app.post("/admin/reset/{email:path}")
+async def admin_reset(email: str, request: Request) -> RedirectResponse:
+    if not _check_admin_cookie(request):
+        return RedirectResponse(url="/admin", status_code=303)
+
+    email = email.strip().lower()
+    await upsert_user_state(email, {
+        "flow":           "idle",
+        "resume_step":    "welcome",
+        "interview_step": "welcome",
+        "data":           {},
+    })
+    log.info("admin.reset email=%s", _mask_email(email))
+    return RedirectResponse(url=f"/admin/user/{email}", status_code=303)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────

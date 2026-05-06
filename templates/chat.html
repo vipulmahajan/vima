@@ -1268,7 +1268,6 @@ function vimaChat() {
         <div class="pay-sub">60-day full access · ₹${amtInr.toLocaleString('en-IN')}</div>
         <button class="pay-btn" id="${btnId}">Pay Now</button>
         <div class="pay-error" id="${errId}"></div>
-        ${msg.direct_link ? '<div style="margin-top:8px;font-size:12px;color:#888;text-align:center;">After payment, return to this tab and type <strong>paid</strong> to continue.</div>' : ''}
       `;
 
       row.appendChild(sender);
@@ -1276,97 +1275,101 @@ function vimaChat() {
       row.appendChild(this._timeEl(msg.ts));
       this._mount(row);
 
-      // Wire up payment button after mount.
-      // TODO: remove direct_link branch once RAZORPAY_KEY_ID is a live key.
+      // Wire up payment button — always uses Checkout JS.
       const payBtn = document.getElementById(btnId);
       const errEl  = document.getElementById(errId);
       if (payBtn) {
         payBtn.addEventListener('click', () => {
-          if (msg.direct_link) {
-            window.open(msg.direct_link, '_blank', 'noopener,noreferrer');
-          } else {
-            this.openRazorpay({ btn: payBtn, errEl, msg });
-          }
+          this.openRazorpay({ btn: payBtn, errEl, msg });
         });
       }
     },
 
     openRazorpay({ btn, errEl, msg }) {
-      if (!window.Razorpay) {
-        errEl.textContent = 'Payment system unavailable. Please try again.';
-        errEl.classList.add('visible');
-        return;
-      }
+      const launchCheckout = () => {
+        if (!window.Razorpay) {
+          errEl.textContent = 'Payment system unavailable. Please try again.';
+          errEl.classList.add('visible');
+          btn.disabled = false;
+          btn.textContent = 'Pay Now';
+          return;
+        }
+
+        const opts = {
+          key:         msg.key_id || RAZORPAY_KEY,
+          amount:      msg.amount || PRICE_PAISE,
+          currency:    msg.currency || 'INR',
+          order_id:    msg.order_id,
+          name:        'ViMa Career Coach',
+          description: msg.description || '60-day Access Pass',
+          prefill: {
+            name:  msg.user_name  || this.userName  || '',
+            email: msg.user_email || this.userEmail || '',
+          },
+          theme: { color: '#B8841F' },
+          handler: (response) => {
+            btn.textContent = 'Verifying…';
+            btn.disabled = true;
+            fetch('/api/payment/verify', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_signature:  response.razorpay_signature,
+              }),
+            })
+            .then(r => r.ok ? r.json() : Promise.reject(r))
+            .then(() => {
+              btn.textContent = 'Access Unlocked ✓';
+              btn.style.background = '#27AE60';
+              // The verify endpoint pushes a WS text event; flow resumes via WebSocket.
+            })
+            .catch(() => {
+              btn.disabled = false;
+              btn.textContent = 'Pay Now';
+              errEl.textContent = 'Verification failed — type "paid" in the chat if your payment went through.';
+              errEl.classList.add('visible');
+            });
+          },
+          modal: {
+            ondismiss: () => {
+              btn.disabled = false;
+              btn.textContent = 'Pay Now';
+              this.appendVima("No problem — your details are saved. Type 'pay' when you're ready to continue.", null);
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(opts);
+        rzp.on('payment.failed', (resp) => {
+          btn.disabled = false;
+          btn.textContent = 'Pay Now';
+          errEl.textContent = resp.error?.description || 'Payment failed. Please try again.';
+          errEl.classList.add('visible');
+        });
+        rzp.open();
+      };
+
       btn.disabled = true;
       btn.textContent = 'Opening…';
       errEl.classList.remove('visible');
 
-      // Fetch a fresh Razorpay order from the backend so we get a real order_id.
-      fetch('/api/payment/create-order', { method: 'POST' })
-        .then(r => r.ok ? r.json() : Promise.reject(r))
-        .then(order => {
-          const key    = order.key_id || msg.key_id || RAZORPAY_KEY;
-          const amount = order.amount || msg.amount || PRICE_PAISE;
-
-          const opts = {
-            key,
-            amount,
-            currency:    order.currency || 'INR',
-            name:        'ViMa',
-            description: msg.description || '60-day full access',
-            order_id:    order.order_id,
-            prefill: {
-              name:  this.userName,
-              email: this.userEmail,
-            },
-            theme: { color: '#B8841F' },
-            handler: (response) => {
-              btn.textContent = 'Verifying…';
-              fetch('/api/payment/verify', {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_order_id:   response.razorpay_order_id,
-                  razorpay_signature:  response.razorpay_signature,
-                }),
-              })
-              .then(r => r.ok ? r.json() : Promise.reject(r))
-              .then(() => {
-                btn.textContent = 'Access Unlocked ✓';
-                btn.style.background = '#27AE60';
-                btn.disabled = true;
-              })
-              .catch(() => {
-                btn.disabled = false;
-                btn.textContent = 'Pay Now';
-                errEl.textContent = 'Payment verification failed. Please contact support.';
-                errEl.classList.add('visible');
-              });
-            },
-            modal: {
-              ondismiss: () => {
-                btn.disabled = false;
-                btn.textContent = 'Pay Now';
-              },
-            },
-          };
-
-          const rzp = new window.Razorpay(opts);
-          rzp.on('payment.failed', (resp) => {
-            btn.disabled = false;
-            btn.textContent = 'Pay Now';
-            errEl.textContent = resp.error?.description || 'Payment failed. Please try again.';
-            errEl.classList.add('visible');
-          });
-          rzp.open();
-        })
-        .catch(() => {
+      // Load Razorpay script dynamically if not already present.
+      if (window.Razorpay) {
+        launchCheckout();
+      } else {
+        const s = document.createElement('script');
+        s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        s.onload = launchCheckout;
+        s.onerror = () => {
           btn.disabled = false;
           btn.textContent = 'Pay Now';
-          errEl.textContent = 'Could not connect to payment service. Please try again.';
+          errEl.textContent = 'Could not load payment system. Please try again.';
           errEl.classList.add('visible');
-        });
+        };
+        document.head.appendChild(s);
+      }
     },
 
     // ── Typing indicator ────────────────────────────────────────────

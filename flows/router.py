@@ -131,9 +131,9 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
             else:
                 await _deliver(user_id, _text_reply(
                     user_id,
-                    "I haven't seen your payment come through yet — it can take "
-                    "a minute. If you've paid, try again in 30 seconds. "
-                    "If you need help, reply *support*."
+                    "I haven't received your payment yet — it can take a minute "
+                    "to process. Try again in 30 seconds, or if the issue persists "
+                    "reply *support* and I'll look into it manually."
                 ))
             return
 

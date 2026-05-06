@@ -73,7 +73,51 @@ class PaymentService:
     async def is_subscribed(self, phone: str) -> bool:
         return await has_active_subscription(phone)
 
-    # ── Access pass: link creation ──────────────────────────────────────────
+    # ── Access pass: Checkout JS order ─────────────────────────────────────
+
+    async def create_order(
+        self,
+        user_id: str,
+        user_name: Optional[str] = None,
+        user_email: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Create a Razorpay Order for Checkout JS and record a payment intent.
+
+        Returns a dict with order_id, amount (paise), currency, key_id,
+        user_name, user_email — ready to push as a payment event.
+        """
+        amount_paise = settings.price_subscription_paise
+
+        payload: dict[str, Any] = {
+            "amount":          amount_paise,
+            "currency":        "INR",
+            "payment_capture": 1,
+            "notes": {
+                "user_id":       user_id,
+                "payment_type":  PAYMENT_TYPE_ACCESS_PASS,
+                "duration_days": str(ACCESS_PASS_DURATION_DAYS),
+            },
+        }
+        resp = await asyncio.to_thread(self._client.order.create, payload)
+        order_id = resp.get("id") or ""
+
+        await record_payment_intent(
+            user_id      = user_id,
+            amount_paise = amount_paise,
+            link_id      = order_id,
+            payment_type = PAYMENT_TYPE_ACCESS_PASS,
+        )
+        log.info("Razorpay order created: order=%s user=%s", order_id, _mask(user_id))
+        return {
+            "order_id":   order_id,
+            "amount":     amount_paise,
+            "currency":   "INR",
+            "key_id":     settings.razorpay_key_id,
+            "user_name":  user_name or "",
+            "user_email": user_email or "",
+        }
+
+    # ── Access pass: link creation (WhatsApp / fallback) ────────────────────
 
     async def create_access_pass_link(
         self,

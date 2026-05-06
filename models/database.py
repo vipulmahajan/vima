@@ -524,3 +524,219 @@ async def store_user_document(
         }).execute()
 
     await asyncio.to_thread(_do)
+
+
+# ---------------------------------------------------------------------------
+# Admin queries  (service-role client — bypasses RLS)
+# ---------------------------------------------------------------------------
+
+
+async def get_admin_overview_stats() -> dict[str, Any]:
+    """Aggregate stats for the admin overview page."""
+    import datetime
+
+    client = _get_client()
+    if client is None:
+        return {}
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    week_ago = (now - datetime.timedelta(days=7)).isoformat()
+    now_iso  = now.isoformat()
+
+    def _do() -> dict[str, Any]:
+        total_users = len((client.table("users").select("id", count="exact").execute()).data or [])
+
+        active_subs = len((
+            client.table("payments")
+            .select("id", count="exact")
+            .eq("status", "paid")
+            .gt("period_end", now_iso)
+            .execute()
+        ).data or [])
+
+        payments_resp = (
+            client.table("payments")
+            .select("amount_paise")
+            .eq("status", "paid")
+            .execute()
+        )
+        total_revenue_paise = sum(
+            (r.get("amount_paise") or 0) for r in (payments_resp.data or [])
+        )
+
+        new_signups = len((
+            client.table("users")
+            .select("id", count="exact")
+            .gt("created_at", week_ago)
+            .execute()
+        ).data or [])
+
+        resumes_delivered = len((
+            client.table("artifacts")
+            .select("id", count="exact")
+            .eq("kind", "resume")
+            .execute()
+        ).data or [])
+
+        preps_delivered = len((
+            client.table("artifacts")
+            .select("id", count="exact")
+            .eq("kind", "interview_prep")
+            .execute()
+        ).data or [])
+
+        return {
+            "total_users":        total_users,
+            "active_subscribers": active_subs,
+            "total_revenue_inr":  total_revenue_paise // 100,
+            "new_signups_week":   new_signups,
+            "resumes_delivered":  resumes_delivered,
+            "preps_delivered":    preps_delivered,
+        }
+
+    return await asyncio.to_thread(_do)
+
+
+async def get_all_users_with_state() -> list[dict[str, Any]]:
+    """Return every user joined with their state, subscription, and artifact counts.
+
+    Used by the admin overview table.
+    """
+    import datetime
+
+    client = _get_client()
+    if client is None:
+        return []
+
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    def _do() -> list[dict[str, Any]]:
+        users = (
+            client.table("users")
+            .select("id,email,phone,name,avatar_url,channel,created_at")
+            .order("created_at", desc=True)
+            .execute()
+        ).data or []
+
+        states_resp = client.table("user_state").select(
+            "user_id,flow,resume_step,interview_step,updated_at"
+        ).execute()
+        state_map: dict[str, dict] = {
+            r["user_id"]: r for r in (states_resp.data or [])
+        }
+
+        payments_resp = client.table("payments").select(
+            "user_id,status,period_end,amount_paise"
+        ).eq("status", "paid").execute()
+        paid_map: dict[str, dict] = {}
+        for p in (payments_resp.data or []):
+            uid = p["user_id"]
+            if uid not in paid_map or (p.get("period_end") or "") > (paid_map[uid].get("period_end") or ""):
+                paid_map[uid] = p
+
+        artifacts_resp = client.table("artifacts").select("user_id,kind").execute()
+        artifact_counts: dict[str, dict[str, int]] = {}
+        for a in (artifacts_resp.data or []):
+            uid = a["user_id"]
+            kind = a.get("kind", "other")
+            artifact_counts.setdefault(uid, {})
+            artifact_counts[uid][kind] = artifact_counts[uid].get(kind, 0) + 1
+
+        rows = []
+        for u in users:
+            uid = u.get("email") or u.get("phone") or ""
+            st  = state_map.get(uid, {})
+            pay = paid_map.get(uid, {})
+            ac  = artifact_counts.get(uid, {})
+
+            period_end = pay.get("period_end") or ""
+            is_active  = bool(pay) and period_end > now_iso
+            days_left  = 0
+            if is_active:
+                try:
+                    pe = datetime.datetime.fromisoformat(period_end.replace("Z", "+00:00"))
+                    days_left = max(0, (pe - datetime.datetime.now(datetime.timezone.utc)).days)
+                except Exception:  # noqa: BLE001
+                    pass
+
+            updated_at = st.get("updated_at") or u.get("created_at") or ""
+
+            rows.append({
+                "user_id":      uid,
+                "name":         u.get("name") or "",
+                "email":        u.get("email") or "",
+                "phone":        u.get("phone") or "",
+                "avatar_url":   u.get("avatar_url") or "",
+                "channel":      u.get("channel") or "web",
+                "created_at":   u.get("created_at") or "",
+                "flow":         st.get("flow") or "idle",
+                "resume_step":  st.get("resume_step") or "",
+                "interview_step": st.get("interview_step") or "",
+                "updated_at":   updated_at,
+                "is_active":    is_active,
+                "days_left":    days_left,
+                "period_end":   period_end,
+                "resume_count": ac.get("resume", 0),
+                "prep_count":   ac.get("interview_prep", 0),
+            })
+        return rows
+
+    return await asyncio.to_thread(_do)
+
+
+async def get_user_artifacts(user_id: str) -> list[dict[str, Any]]:
+    """Return all artifact rows for a user, newest first."""
+    client = _get_client()
+    if client is None:
+        return []
+
+    def _do() -> list[dict[str, Any]]:
+        resp = (
+            client.table("artifacts")
+            .select("id,kind,storage_path,version,created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return resp.data or []
+
+    return await asyncio.to_thread(_do)
+
+
+async def get_payment_history(user_id: str) -> list[dict[str, Any]]:
+    """Return all payment rows for a user, newest first."""
+    client = _get_client()
+    if client is None:
+        return []
+
+    def _do() -> list[dict[str, Any]]:
+        resp = (
+            client.table("payments")
+            .select("id,amount_paise,status,payment_type,razorpay_payment_id,period_end,created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return resp.data or []
+
+    return await asyncio.to_thread(_do)
+
+
+async def admin_get_user(user_id: str) -> Optional[dict[str, Any]]:
+    """Fetch the users row for a given email or phone."""
+    client = _get_client()
+    if client is None:
+        return None
+
+    def _do() -> Optional[dict[str, Any]]:
+        col = "email" if "@" in user_id else "phone"
+        resp = (
+            client.table("users")
+            .select("id,email,phone,name,avatar_url,channel,created_at")
+            .eq(col, user_id)
+            .maybe_single()
+            .execute()
+        )
+        return resp.data or None
+
+    return await asyncio.to_thread(_do)

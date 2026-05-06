@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>ViMa Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #F8F4EB;
+      font-family: "Inter", system-ui, sans-serif;
+      color: #2A2A2A;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #B8841F; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: #2A2A2A;
+      color: #F8F4EB;
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-brand {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #B8841F;
+      letter-spacing: -0.3px;
+    }
+    .topbar-brand span { color: #F8F4EB; font-size: 13px; font-family: "Inter", sans-serif; font-weight: 400; margin-left: 10px; opacity: 0.6; }
+    .topbar-logout { font-size: 13px; color: #aaa; }
+    .topbar-logout:hover { color: #F8F4EB; }
+
+    /* ── Page wrapper ── */
+    .page { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
+
+    /* ── Section heading ── */
+    h2 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 18px;
+      color: #2A2A2A;
+    }
+
+    /* ── Stat cards ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 20px 16px;
+      box-shadow: 0 1px 6px rgba(42,42,42,0.07);
+    }
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #2A2A2A;
+      line-height: 1;
+    }
+    .stat-value.accent { color: #B8841F; }
+
+    /* ── User table ── */
+    .table-wrap {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 1px 8px rgba(42,42,42,0.07);
+      overflow: hidden;
+    }
+    .table-header {
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid #F0EBE0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .table-title { font-weight: 600; font-size: 15px; }
+    .table-count { font-size: 13px; color: #888; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th {
+      padding: 11px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      background: #FAF7F2;
+      border-bottom: 1px solid #EDE8DC;
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid #F5F0E8;
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #FAF7F2; }
+    tbody tr.stuck { background: #FFFBEB; }
+    tbody tr.stuck:hover { background: #FEF3C7; }
+
+    td {
+      padding: 12px 16px;
+      vertical-align: middle;
+      font-size: 13px;
+      color: #333;
+    }
+
+    /* Name + avatar */
+    .user-cell { display: flex; align-items: center; gap: 10px; }
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #EDE8DC;
+      flex-shrink: 0;
+    }
+    .avatar-initials {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: #B8841F;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .user-name { font-weight: 600; color: #2A2A2A; }
+    .user-email { font-size: 11px; color: #888; }
+
+    /* Status badges */
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-green  { background: #DCFCE7; color: #166534; }
+    .badge-grey   { background: #F3F4F6; color: #6B7280; }
+    .badge-amber  { background: #FEF3C7; color: #92400E; }
+
+    /* Flow step */
+    .step-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: #F5F0E8;
+      color: #666;
+      font-size: 11px;
+      font-family: "Courier New", monospace;
+    }
+
+    /* Actions */
+    .btn-sm {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+    }
+    .btn-primary { background: #B8841F; color: #fff; }
+    .btn-primary:hover { background: #9e6f18; color: #fff; }
+    .btn-ghost { background: #F5F0E8; color: #555; }
+    .btn-ghost:hover { background: #EDE8DC; }
+
+    /* Stuck alert row indicator */
+    .stuck-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #F59E0B;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .legend span { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green  { background: #22C55E; }
+    .dot-amber  { background: #F59E0B; }
+    .dot-grey   { background: #D1D5DB; }
+
+    /* Empty state */
+    .empty { padding: 48px; text-align: center; color: #aaa; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">ViMa <span>Admin</span></div>
+  <a class="topbar-logout" href="/admin/logout">Sign out</a>
+</div>
+
+<div class="page">
+
+  <!-- Stats -->
+  <h2>Overview</h2>
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Users</div>
+      <div class="stat-value">{{ stats.total_users }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Subscribers</div>
+      <div class="stat-value accent">{{ stats.active_subscribers }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Revenue</div>
+      <div class="stat-value">₹{{ "{:,}".format(stats.total_revenue_inr) }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">New This Week</div>
+      <div class="stat-value">{{ stats.new_signups_week }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Resumes Delivered</div>
+      <div class="stat-value">{{ stats.resumes_delivered }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Prep Kits Delivered</div>
+      <div class="stat-value">{{ stats.preps_delivered }}</div>
+    </div>
+  </div>
+
+  <!-- User table -->
+  <div class="legend">
+    <span><span class="dot dot-green"></span> Active subscriber</span>
+    <span><span class="dot dot-amber"></span> Stuck &gt;24h</span>
+    <span><span class="dot dot-grey"></span> Inactive</span>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-header">
+      <span class="table-title">Users</span>
+      <span class="table-count">{{ users|length }} total</span>
+    </div>
+    {% if users %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name / Email</th>
+          <th>Signed Up</th>
+          <th>Last Active</th>
+          <th>Flow + Step</th>
+          <th>Subscription</th>
+          <th>Outputs</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        {% set row_class = "stuck" if u.stuck else "" %}
+        <tr class="{{ row_class }}">
+          <td>
+            <div class="user-cell">
+              {% if u.avatar_url %}
+                <img class="avatar" src="{{ u.avatar_url }}" alt=""/>
+              {% else %}
+                <div class="avatar-initials">{{ (u.name or u.email or "?")[:1].upper() }}</div>
+              {% endif %}
+              <div>
+                <div class="user-name">
+                  {% if u.stuck %}<span class="stuck-dot"></span>{% endif %}
+                  {{ u.name or "(no name)" }}
+                </div>
+                <div class="user-email">{{ u.email or u.phone }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ u.created_at[:10] if u.created_at else "—" }}</td>
+          <td>{{ u.updated_at[:10] if u.updated_at else "—" }}</td>
+          <td>
+            {% if u.flow and u.flow != "idle" %}
+              <span class="step-pill">{{ u.flow }}/{{ u.resume_step or u.interview_step or "—" }}</span>
+            {% else %}
+              <span style="color:#bbb">idle</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.is_active %}
+              <span class="badge badge-green">Active · {{ u.days_left }}d left</span>
+            {% else %}
+              <span class="badge badge-grey">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.resume_count or u.prep_count %}
+              {% if u.resume_count %}<span title="Resumes">📄 {{ u.resume_count }}</span>{% endif %}
+              {% if u.prep_count %}&nbsp;<span title="Prep kits">📋 {{ u.prep_count }}</span>{% endif %}
+            {% else %}
+              <span style="color:#ccc">—</span>
+            {% endif %}
+          </td>
+          <td style="white-space:nowrap">
+            <a class="btn-sm btn-ghost" href="/admin/user/{{ u.email or u.phone }}">View</a>
+            {% if not u.is_active %}
+              &nbsp;
+              <form method="post" action="/admin/activate/{{ u.email or u.phone }}" style="display:inline">
+                <button type="submit" class="btn-sm btn-primary">Activate</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No users yet.</div>
+    {% endif %}
+  </div>
+
+</div>
+</body>
+</html>

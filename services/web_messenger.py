@@ -140,23 +140,24 @@ class WebMessenger(Messenger):
     async def send_payment_request(
         self,
         user_id: str,
-        payment_link: str,
+        order_id: str,
         amount: int,
-        description: str,
+        currency: str = "INR",
+        key_id: str = "",
+        user_name: str = "",
+        user_email: str = "",
+        description: str = "60-day Access Pass",
     ) -> None:
-        # TODO: remove direct_link branch once RAZORPAY_KEY_ID is a live key
-        # and Checkout JS is the sole payment path.
-        # When RAZORPAY_PAYMENT_LINK is set we push it as direct_link so the
-        # frontend opens it in a new tab instead of invoking Razorpay Checkout.
-        direct_link = settings.razorpay_payment_link or ""
         await self._push(user_id, {
-            "type":         "payment",
-            "amount":       amount,        # paise
-            "description":  description,
-            "payment_link": payment_link,  # WhatsApp fallback link
-            "direct_link":  direct_link,   # non-empty → open in new tab (beta path)
-            "key_id":       settings.razorpay_key_id,
-            "ts":           time.time(),
+            "type":        "payment",
+            "order_id":    order_id,
+            "amount":      amount,
+            "currency":    currency,
+            "key_id":      key_id or settings.razorpay_key_id,
+            "user_name":   user_name,
+            "user_email":  user_email,
+            "description": description,
+            "ts":          time.time(),
         })
 
     # send_quick_replies ────────────────────────────────────────────────────

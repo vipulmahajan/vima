@@ -117,7 +117,7 @@ async def handle(
             await upsert_user_state(sender, {"interview_step": PREP_GENERATING})
             return await _handle_prep_generating(sender, message, text)
         if text.lower().strip() == "retry":
-            return _text(sender, await _payment_gate_body(sender))
+            return await _payment_gate(sender)
         return _text(sender,
             "I'm waiting for your payment to come through — once it does, your "
             "interview prep will arrive automatically. If you've already paid, "
@@ -345,7 +345,7 @@ async def _handle_prep_generating(
     if not await payments.is_subscribed(sender):
         await merge_user_state_data(sender, {"pending_action": "interview_prep"})
         await upsert_user_state(sender, {"interview_step": AWAITING_PAYMENT})
-        return _text(sender, await _payment_gate_body(sender))
+        return await _payment_gate(sender)
 
     # 1. Ack first so the user isn't waiting silent.
     messenger = await get_messenger(sender)
@@ -556,32 +556,58 @@ def _q4_body() -> str:
 
 # ── Payment gate ────────────────────────────────────────────────────────────
 
-async def _payment_gate_body(sender: str) -> str:
-    """Return the payment prompt text, using a direct link when configured."""
+async def _payment_gate(sender: str) -> Optional[dict[str, Any]]:
+    """Push a Checkout JS payment event (web) or return a text reply (WhatsApp)."""
+    state_now  = await get_user_state(sender)
+    data       = state_now.get("data") or {}
+    user_name  = data.get("user_name") or ""
+    user_email = sender if "@" in sender else ""
+
+    # Web channel — push a payment event for Checkout JS.
+    if "@" in sender:
+        try:
+            order = await PaymentService().create_order(
+                user_id    = sender,
+                user_name  = user_name,
+                user_email = user_email,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.exception("create_order failed for web user %s: %s", _mask(sender), exc)
+            return _text(sender,
+                "Couldn't set up the payment right now — reply *retry* in a minute."
+            )
+        messenger = await get_messenger(sender)
+        await messenger.send_payment_request(
+            user_id    = sender,
+            order_id   = order["order_id"],
+            amount     = order["amount"],
+            currency   = order["currency"],
+            key_id     = order["key_id"],
+            user_name  = order["user_name"],
+            user_email = order["user_email"],
+        )
+        return None  # event pushed; no further reply needed
+
+    # WhatsApp channel — fall back to a payment link in text.
     body = (
         "Your tailored output is ready to be created.\n\n"
         "Unlock *60 days of access for ₹1,799* — covers everything I "
         "can help you with: resume rebuilds, interview prep, and "
         "unlimited iterations."
     )
-    direct = (settings.razorpay_payment_link or "").strip()
-    if direct:
-        return body + f"\n\nPay here: {direct}"
-
-    # No direct link configured — try the Razorpay API.
     try:
-        state_now = await get_user_state(sender)
-        user_name = (state_now.get("data") or {}).get("user_name")
-        link = await PaymentService().create_access_pass_link(sender, user_name=user_name)
+        link = await PaymentService().create_access_pass_link(
+            sender, user_name=user_name or None
+        )
     except Exception:  # noqa: BLE001
         link = None
 
     if link:
-        return body + f"\n\nPay here: {link}"
-    return body + (
+        return _text(sender, body + f"\n\nPay here: {link}")
+    return _text(sender, body + (
         "\n\nThe payment link couldn't be created right now — reply "
         "*retry* in a minute and I'll try again."
-    )
+    ))
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
