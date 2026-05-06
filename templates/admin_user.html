@@ -210,6 +210,23 @@
 
     .empty-state { padding: 24px; text-align: center; color: #bbb; font-size: 13px; }
 
+    /* Activation banner */
+    .banner-success {
+      background: #DCFCE7;
+      border: 1px solid #86EFAC;
+      color: #166534;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: opacity 0.5s ease;
+    }
+    .banner-success.fade-out { opacity: 0; pointer-events: none; }
+
     /* Current flow step */
     .step-badge {
       display: inline-block;
@@ -233,6 +250,19 @@
 </div>
 
 <div class="page">
+
+  {% if activated %}
+  <div class="banner-success" id="activationBanner">
+    <span>✓ Subscription activated — 60 days access granted.</span>
+    <span style="cursor:pointer;font-size:16px;line-height:1" onclick="document.getElementById('activationBanner').style.display='none'">&times;</span>
+  </div>
+  <script>
+    setTimeout(function() {
+      var b = document.getElementById('activationBanner');
+      if (b) { b.classList.add('fade-out'); setTimeout(function(){ b.style.display='none'; }, 500); }
+    }, 5000);
+  </script>
+  {% endif %}
 
   <!-- Row 1: Profile + Subscription -->
   <div class="grid-2">

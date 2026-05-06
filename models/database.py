@@ -414,7 +414,21 @@ async def mark_subscription_active(
             q = q.eq("link_id", link_id)
         else:
             q = q.eq("status", "created")
-        q.execute()
+        result = q.execute()
+        # If no rows were updated (user never hit the payment gate), insert one.
+        if not (result.data if hasattr(result, "data") else []):
+            insert_row: dict[str, Any] = {
+                "user_id":      user_id,
+                "amount_paise": 179900,
+                "payment_type": payment_type or "access_pass",
+                "status":       "paid",
+                "period_end":   period_end,
+            }
+            if razorpay_payment_id:
+                insert_row["razorpay_payment_id"] = razorpay_payment_id
+            if link_id:
+                insert_row["link_id"] = link_id
+            client.table("payments").insert(insert_row).execute()
 
     await asyncio.to_thread(_do)
 

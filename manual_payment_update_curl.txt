@@ -6,6 +6,8 @@
 6. User's output (resume/prep kit) delivers automatically
 7. Done — takes you under 2 minutes per user
 
+admin_secret = An@lyt1csMahajan@123
+
 CMD
 curl -X POST https://vima.coach/api/admin/activate-user -H "Content-Type: application/json" -d "{\"email\":\"user@example.com\",\"duration_days\":60,\"admin_secret\":\"your-admin-secret\"}"
 
@@ -16,5 +18,11 @@ Invoke-WebRequest -Uri "https://vima.coach/api/admin/activate-user" -Method POST
 Success Output
 {"success":true,"user":"user@example.com","period_end":"2026-07-04T..."}
 
-$body = '{"email":"user@example.com","duration_days":60,"admin_secret":"0dc05cfa6b4230d55492835e850a8fbc8b9fcf3d4369749284abd8584b6587c2"}'
+$body = '{"email":"vipulmahajan@gmail.com","duration_days":60,"admin_secret":"0dc05cfa6b4230d55492835e850a8fbc8b9fcf3d4369749284abd8584b6587c2"}'
 Invoke-WebRequest -Uri "https://vima.coach/api/admin/activate-user" -Method POST -ContentType "application/json" -Body $body
+
+$body = '{"email":"vipulmahajan@gmail.com","duration_days":60,"admin_secret":"0dc05cfa6b4230d55492835e850a8fbc8b9fcf3d4369749284abd8584b6587c2"}'
+Invoke-WebRequest -Uri "https://web-production-bee24.up.railway.app/api/admin/activate-user" -Method POST -ContentType "application/json" -Body $body
+
+$body = '{"email":"vyas.kavita@gmail.com","duration_days":60,"admin_secret":"0dc05cfa6b4230d55492835e850a8fbc8b9fcf3d4369749284abd8584b6587c2"}'
+Invoke-WebRequest -Uri "https://web-production-bee24.up.railway.app/api/admin/activate-user" -Method POST -ContentType "application/json" -Body $body

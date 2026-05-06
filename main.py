@@ -960,6 +960,16 @@ async def ws_chat(websocket: WebSocket) -> None:
     from services.web_messenger import _queue_for
     queue = await _queue_for(email)
 
+    # If activation happened while the user was offline, deliver pending output now.
+    try:
+        _ws_state = await get_user_state(email)
+        if (_ws_state.get("data") or {}).get("pending_action"):
+            asyncio.create_task(
+                _resume_pending_output(email), name=f"ws.resume.{email[:8]}"
+            )
+    except Exception:  # noqa: BLE001
+        log.exception("ws.connect pending_action check failed for %s", _mask_email(email))
+
     receive_task = asyncio.create_task(_ws_receive(websocket, email, first_name), name=f"ws.recv.{email[:8]}")
     drain_task   = asyncio.create_task(_ws_drain(websocket, queue),   name=f"ws.drain.{email[:8]}")
     ping_task    = asyncio.create_task(_ws_ping(websocket),           name=f"ws.ping.{email[:8]}")
@@ -1482,6 +1492,7 @@ async def admin_user_detail(email: str, request: Request) -> HTMLResponse:
         active_pay  = active_pay,
         artifacts   = artifacts,
         history     = history,
+        activated   = request.query_params.get("activated") == "true",
     )
     return HTMLResponse(html)
 
@@ -1502,7 +1513,7 @@ async def admin_activate(email: str, request: Request) -> RedirectResponse:
         await _resume_pending_output(email)
     except Exception:  # noqa: BLE001
         log.exception("admin.activate resume_pending failed for %s", _mask_email(email))
-    return RedirectResponse(url=f"/admin/user/{email}", status_code=303)
+    return RedirectResponse(url=f"/admin/user/{email}?activated=true", status_code=303)
 
 
 @app.post("/admin/reset/{email:path}")

@@ -63,6 +63,38 @@ _PAYMENT_CONFIRM_KEYWORDS = {
     "payment complete", "transferred", "payment made",
 }
 
+# Substring words that signal "pick up where I left off" intent.
+_CONTINUATION_SUBSTRINGS = {"left", "pick", "continue", "where", "same", "before", "previous", "back", "yes", "sure", "ok"}
+
+
+def _has_saved_context(data: dict) -> bool:
+    """True if data contains enough context to identify a prior journey."""
+    return bool(
+        data.get("current_role_target")
+        or data.get("resume_sources")
+        or data.get("jd_text")
+    )
+
+
+def _is_continuation_intent(text: str) -> bool:
+    """True if the user's message contains any continuation-signal word."""
+    t = text.lower()
+    return any(word in t for word in _CONTINUATION_SUBSTRINGS)
+
+
+def _returning_user_reply(to: str, *, role: str = "", first_name: str = "") -> dict[str, Any]:
+    """3-option prompt shown to returning users who have saved context."""
+    role_text = f" for *{role}*" if role else ""
+    name_part = f" {first_name}" if first_name else ""
+    text = (
+        f"Welcome back{name_part}! I can see you were building a resume{role_text}. "
+        "What would you like to do?\n\n"
+        "*1.* Prepare for the interview for this role\n"
+        "*2.* Build a resume for a different role\n"
+        "*3.* Start something new"
+    )
+    return _text_reply(to, text)
+
 
 # ── Web entry point ──────────────────────────────────────────────────────────
 
@@ -137,8 +169,71 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
                 ))
             return
 
+    data = state.get("data") or {}
+
+    # Handle replies to the returning-user 3-option prompt.
+    if data.get("awaiting_returning_choice"):
+        role = (data.get("current_role_target") or "").strip()
+        if t_lower in ("1", "interview", "prepare", "interview prep", "yes", "sure", "ok"):
+            # Interview for same role — jump directly with pre-filled context.
+            await merge_user_state_data(user_id, {"awaiting_returning_choice": False})
+            await upsert_user_state(user_id, {
+                "flow": STATE_INTERVIEW,
+                "interview_step": interview_flow.INITIAL_STEP,
+            })
+            state = await get_user_state(user_id)
+            reply = await interview_flow.handle(user_id, message, state)
+            await _deliver(user_id, reply)
+            return
+        if t_lower in ("2", "new resume", "different role", "resume"):
+            # New resume for a different role — clear old context, start fresh.
+            await merge_user_state_data(user_id, {"awaiting_returning_choice": False,
+                                                   "current_role_target": None,
+                                                   "resume_sources": None,
+                                                   "jd_text": None})
+            reply = await _enter_resume(user_id, message, skip_welcome=True)
+            await _deliver(user_id, reply)
+            return
+        if t_lower in ("3", "new", "start over", "something new", "start fresh"):
+            # Completely fresh — wipe data and show menu.
+            await upsert_user_state(user_id, {"flow": STATE_IDLE})
+            await merge_user_state_data(user_id, {
+                "awaiting_returning_choice": False,
+                "awaiting_stage": True,
+                "current_role_target": None,
+                "resume_sources": None,
+                "jd_text": None,
+            })
+            await _deliver(user_id, _menu_reply(user_id, first_name=first_name))
+            return
+        # Unrecognised reply — re-show the 3-option prompt.
+        await _deliver(user_id, _returning_user_reply(user_id, role=role, first_name=first_name))
+        return
+
+    # Handle continue / new replies from the in-progress prompt (mid-flow pause).
+    if data.get("awaiting_resume_confirm"):
+        if t_lower == "continue":
+            await merge_user_state_data(user_id, {"awaiting_resume_confirm": False})
+            if current == STATE_RESUME:
+                reply = await resume_flow.handle(user_id, message, state)
+            else:
+                reply = await interview_flow.handle(user_id, message, state)
+            await _deliver(user_id, reply)
+            return
+        if t_lower in ("new", "start over", "3"):
+            await upsert_user_state(user_id, {"flow": STATE_IDLE})
+            await merge_user_state_data(user_id, {
+                "awaiting_stage": True,
+                "awaiting_resume_confirm": False,
+                "current_role_target": None,
+                "resume_sources": None,
+                "jd_text": None,
+            })
+            await _deliver(user_id, _menu_reply(user_id, first_name=first_name))
+            return
+
     # Menu / reset — but preserve in-progress work instead of wiping state.
-    if t_lower in RESET_TRIGGERS:
+    if t_lower in RESET_TRIGGERS or _is_continuation_intent(t):
         _TERMINAL_STEPS = {"delivered", "welcome", ""}
         in_progress = (
             current not in (STATE_IDLE, "")
@@ -147,9 +242,8 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
             ) not in _TERMINAL_STEPS
         )
         if in_progress:
-            data = state.get("data") or {}
-            role_hint = (data.get("current_role_target") or "").strip()
-            role_text = f" for *{role_hint}*" if role_hint else ""
+            role_hint  = (data.get("current_role_target") or "").strip()
+            role_text  = f" for *{role_hint}*" if role_hint else ""
             flow_label = "resume" if current == STATE_RESUME else "interview prep"
             name_part  = f", {first_name}" if first_name else ""
             await merge_user_state_data(user_id, {"awaiting_resume_confirm": True})
@@ -160,32 +254,24 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
                 "Reply *continue* to resume, or *new* to start fresh."
             ))
             return
+
+        # flow=idle but saved context exists → returning user who completed delivery.
+        if _has_saved_context(data):
+            role = (data.get("current_role_target") or "").strip()
+            await merge_user_state_data(user_id, {"awaiting_returning_choice": True})
+            await _deliver(user_id, _returning_user_reply(user_id, role=role, first_name=first_name))
+            return
+
+        # Truly new / no context — show menu.
         await upsert_user_state(user_id, {"flow": STATE_IDLE})
         await merge_user_state_data(user_id, {"awaiting_stage": True})
         reply = _menu_reply(user_id, first_name=first_name)
         await _deliver(user_id, reply)
         return
 
-    # Handle continue / new replies from the in-progress prompt above.
-    if (state.get("data") or {}).get("awaiting_resume_confirm"):
-        if t_lower == "continue":
-            await merge_user_state_data(user_id, {"awaiting_resume_confirm": False})
-            if current == STATE_RESUME:
-                reply = await resume_flow.handle(user_id, message, state)
-            else:
-                reply = await interview_flow.handle(user_id, message, state)
-            await _deliver(user_id, reply)
-            return
-        if t_lower == "new":
-            await upsert_user_state(user_id, {"flow": STATE_IDLE})
-            await merge_user_state_data(user_id, {"awaiting_stage": True, "awaiting_resume_confirm": False})
-            await _deliver(user_id, _menu_reply(user_id, first_name=first_name))
-            return
-
     intent = _detect_intent(t)
 
     if current == STATE_IDLE:
-        data = state.get("data") or {}
         if data.get("awaiting_stage"):
             stage = _parse_stage_choice(t)
             if stage is not None:
@@ -211,6 +297,20 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
             await merge_user_state_data(user_id, {"awaiting_stage": True})
             reply = _capability_reply(user_id)
             await _deliver(user_id, reply)
+            return
+
+        if _has_saved_context(data):
+            # User has prior context but sent a free-form message — check if
+            # it's a continuation intent, otherwise show the returning prompt.
+            if _is_continuation_intent(t):
+                role = (data.get("current_role_target") or "").strip()
+                await merge_user_state_data(user_id, {"awaiting_returning_choice": True})
+                await _deliver(user_id, _returning_user_reply(user_id, role=role, first_name=first_name))
+                return
+            # Not clearly a continuation — let Claude handle it as coaching chat.
+            claude = ClaudeService()
+            reply_text = await claude.chat_with_persona(user_id, t)
+            await _deliver(user_id, _text_reply(user_id, reply_text))
             return
 
         if not data:
@@ -683,8 +783,8 @@ async def _dispatch_stage(
     return _text_reply(
         sender,
         f"*{label}* — Coming soon. I'll notify you when this is ready!\n\n"
-        "Meanwhile, reply *2* to build a tailored resume or *3* to run a mock "
-        "interview. Reply *menu* anytime to see all options."
+        "Meanwhile, reply *1* to build a tailored resume or *2* to prepare for "
+        "an interview. Reply *menu* anytime to see all options."
     )
 
 
