@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ViMa Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -23,67 +23,76 @@
     .topbar {
       background: #2A2A2A;
       color: #F8F4EB;
-      padding: 0 32px;
-      height: 56px;
+      padding: 0 16px;
+      height: 52px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       position: sticky;
       top: 0;
       z-index: 100;
+      gap: 8px;
     }
     .topbar-brand {
       font-family: "Fraunces", Georgia, serif;
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 700;
       color: #B8841F;
       letter-spacing: -0.3px;
+      white-space: nowrap;
     }
-    .topbar-brand span { color: #F8F4EB; font-size: 13px; font-family: "Inter", sans-serif; font-weight: 400; margin-left: 10px; opacity: 0.6; }
-    .topbar-logout { font-size: 13px; color: #aaa; }
+    .topbar-brand span {
+      color: #F8F4EB;
+      font-size: 12px;
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      margin-left: 8px;
+      opacity: 0.6;
+    }
+    .topbar-logout { font-size: 13px; color: #aaa; white-space: nowrap; flex-shrink: 0; }
     .topbar-logout:hover { color: #F8F4EB; }
 
     /* ── Page wrapper ── */
-    .page { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
+    .page { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
 
     /* ── Section heading ── */
     h2 {
       font-family: "Fraunces", Georgia, serif;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
-      margin: 0 0 18px;
+      margin: 0 0 16px;
       color: #2A2A2A;
     }
 
     /* ── Stat cards ── */
     .stats {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-      gap: 16px;
-      margin-bottom: 40px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 32px;
     }
     .stat-card {
       background: #fff;
       border-radius: 12px;
-      padding: 20px 20px 16px;
+      padding: 16px 16px 14px;
       box-shadow: 0 1px 6px rgba(42,42,42,0.07);
     }
     .stat-label {
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.6px;
       color: #888;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .stat-value {
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 700;
       color: #2A2A2A;
       line-height: 1;
     }
     .stat-value.accent { color: #B8841F; }
 
-    /* ── User table ── */
+    /* ── User table (desktop) ── */
     .table-wrap {
       background: #fff;
       border-radius: 14px;
@@ -91,7 +100,7 @@
       overflow: hidden;
     }
     .table-header {
-      padding: 18px 24px 14px;
+      padding: 16px 20px 12px;
       border-bottom: 1px solid #F0EBE0;
       display: flex;
       align-items: center;
@@ -99,6 +108,10 @@
     }
     .table-title { font-weight: 600; font-size: 15px; }
     .table-count { font-size: 13px; color: #888; }
+
+    /* Desktop table */
+    .users-table { display: block; }
+    .users-cards  { display: none; }
 
     table {
       width: 100%;
@@ -132,7 +145,29 @@
       color: #333;
     }
 
-    /* Name + avatar */
+    /* ── User cards (mobile) ── */
+    .user-card {
+      border-bottom: 1px solid #F0EBE0;
+      padding: 16px;
+    }
+    .user-card:last-child { border-bottom: none; }
+    .user-card.stuck { background: #FFFBEB; }
+
+    .uc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .uc-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .uc-meta-item { }
+    .uc-meta-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #aaa;
+      margin-bottom: 2px;
+    }
+    .uc-meta-val { font-size: 12px; color: #333; font-weight: 500; }
+    .uc-actions { display: flex; gap: 8px; }
+    .uc-actions .btn-sm { flex: 1; text-align: center; }
+
+    /* Shared avatar + name cells */
     .user-cell { display: flex; align-items: center; gap: 10px; }
     .avatar {
       width: 32px; height: 32px;
@@ -153,7 +188,7 @@
       font-weight: 700;
       flex-shrink: 0;
     }
-    .user-name { font-weight: 600; color: #2A2A2A; }
+    .user-name { font-weight: 600; color: #2A2A2A; font-size: 14px; }
     .user-email { font-size: 11px; color: #888; }
 
     /* Status badges */
@@ -183,7 +218,7 @@
     /* Actions */
     .btn-sm {
       display: inline-block;
-      padding: 5px 12px;
+      padding: 6px 12px;
       border-radius: 6px;
       font-size: 12px;
       font-weight: 600;
@@ -197,7 +232,7 @@
     .btn-ghost { background: #F5F0E8; color: #555; }
     .btn-ghost:hover { background: #EDE8DC; }
 
-    /* Stuck alert row indicator */
+    /* Stuck indicator */
     .stuck-dot {
       display: inline-block;
       width: 7px; height: 7px;
@@ -210,7 +245,7 @@
     /* Legend */
     .legend {
       display: flex;
-      gap: 20px;
+      gap: 16px;
       font-size: 12px;
       color: #888;
       margin-bottom: 12px;
@@ -224,6 +259,27 @@
 
     /* Empty state */
     .empty { padding: 48px; text-align: center; color: #aaa; }
+
+    /* ── Mobile overrides ── */
+    @media (max-width: 768px) {
+      .topbar { padding: 0 14px; height: 48px; }
+      .topbar-brand { font-size: 18px; }
+      .topbar-brand span { display: none; }
+
+      .page { padding: 16px 12px 48px; }
+      h2 { font-size: 16px; margin-bottom: 12px; }
+
+      .stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 24px;
+      }
+      .stat-card { padding: 12px 12px 10px; }
+      .stat-value { font-size: 22px; }
+
+      .users-table { display: none; }
+      .users-cards  { display: block; }
+    }
   </style>
 </head>
 <body>
@@ -264,7 +320,7 @@
     </div>
   </div>
 
-  <!-- User table -->
+  <!-- Legend -->
   <div class="legend">
     <span><span class="dot dot-green"></span> Active subscriber</span>
     <span><span class="dot dot-amber"></span> Stuck &gt;24h</span>
@@ -276,76 +332,149 @@
       <span class="table-title">Users</span>
       <span class="table-count">{{ users|length }} total</span>
     </div>
+
     {% if users %}
-    <table>
-      <thead>
-        <tr>
-          <th>Name / Email</th>
-          <th>Signed Up</th>
-          <th>Last Active</th>
-          <th>Flow + Step</th>
-          <th>Subscription</th>
-          <th>Outputs</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for u in users %}
-        {% set row_class = "stuck" if u.stuck else "" %}
-        <tr class="{{ row_class }}">
-          <td>
-            <div class="user-cell">
-              {% if u.avatar_url %}
-                <img class="avatar" src="{{ u.avatar_url }}" alt=""/>
-              {% else %}
-                <div class="avatar-initials">{{ (u.name or u.email or "?")[:1].upper() }}</div>
-              {% endif %}
-              <div>
-                <div class="user-name">
-                  {% if u.stuck %}<span class="stuck-dot"></span>{% endif %}
-                  {{ u.name or "(no name)" }}
+
+    <!-- ── Desktop table ── -->
+    <div class="users-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Name / Email</th>
+            <th>Signed Up</th>
+            <th>Last Active</th>
+            <th>Flow + Step</th>
+            <th>Subscription</th>
+            <th>Outputs</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          {% set row_class = "stuck" if u.stuck else "" %}
+          <tr class="{{ row_class }}">
+            <td>
+              <div class="user-cell">
+                {% if u.avatar_url %}
+                  <img class="avatar" src="{{ u.avatar_url }}" alt=""/>
+                {% else %}
+                  <div class="avatar-initials">{{ (u.name or u.email or "?")[:1].upper() }}</div>
+                {% endif %}
+                <div>
+                  <div class="user-name">
+                    {% if u.stuck %}<span class="stuck-dot"></span>{% endif %}
+                    {{ u.name or "(no name)" }}
+                  </div>
+                  <div class="user-email">{{ u.email or u.phone }}</div>
                 </div>
-                <div class="user-email">{{ u.email or u.phone }}</div>
               </div>
+            </td>
+            <td>{{ u.created_at[:10] if u.created_at else "—" }}</td>
+            <td>{{ u.updated_at[:10] if u.updated_at else "—" }}</td>
+            <td>
+              {% if u.flow and u.flow != "idle" %}
+                <span class="step-pill">{{ u.flow }}/{{ u.resume_step or u.interview_step or "—" }}</span>
+              {% else %}
+                <span style="color:#bbb">idle</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if u.is_active %}
+                <span class="badge badge-green">Active · {{ u.days_left }}d left</span>
+              {% else %}
+                <span class="badge badge-grey">Inactive</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if u.resume_count or u.prep_count %}
+                {% if u.resume_count %}<span title="Resumes">📄 {{ u.resume_count }}</span>{% endif %}
+                {% if u.prep_count %}&nbsp;<span title="Prep kits">📋 {{ u.prep_count }}</span>{% endif %}
+              {% else %}
+                <span style="color:#ccc">—</span>
+              {% endif %}
+            </td>
+            <td style="white-space:nowrap">
+              <a class="btn-sm btn-ghost" href="/admin/user/{{ u.email or u.phone }}">View</a>
+              {% if not u.is_active %}
+                &nbsp;
+                <form method="post" action="/admin/activate/{{ u.email or u.phone }}" style="display:inline">
+                  <button type="submit" class="btn-sm btn-primary">Activate</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Mobile cards ── -->
+    <div class="users-cards">
+      {% for u in users %}
+      <div class="user-card{% if u.stuck %} stuck{% endif %}">
+
+        <!-- Avatar + name -->
+        <div class="uc-head">
+          {% if u.avatar_url %}
+            <img class="avatar" src="{{ u.avatar_url }}" alt=""/>
+          {% else %}
+            <div class="avatar-initials">{{ (u.name or u.email or "?")[:1].upper() }}</div>
+          {% endif %}
+          <div>
+            <div class="user-name">
+              {% if u.stuck %}<span class="stuck-dot"></span>{% endif %}
+              {{ u.name or "(no name)" }}
             </div>
-          </td>
-          <td>{{ u.created_at[:10] if u.created_at else "—" }}</td>
-          <td>{{ u.updated_at[:10] if u.updated_at else "—" }}</td>
-          <td>
-            {% if u.flow and u.flow != "idle" %}
-              <span class="step-pill">{{ u.flow }}/{{ u.resume_step or u.interview_step or "—" }}</span>
-            {% else %}
-              <span style="color:#bbb">idle</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if u.is_active %}
-              <span class="badge badge-green">Active · {{ u.days_left }}d left</span>
-            {% else %}
-              <span class="badge badge-grey">Inactive</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if u.resume_count or u.prep_count %}
-              {% if u.resume_count %}<span title="Resumes">📄 {{ u.resume_count }}</span>{% endif %}
-              {% if u.prep_count %}&nbsp;<span title="Prep kits">📋 {{ u.prep_count }}</span>{% endif %}
-            {% else %}
-              <span style="color:#ccc">—</span>
-            {% endif %}
-          </td>
-          <td style="white-space:nowrap">
-            <a class="btn-sm btn-ghost" href="/admin/user/{{ u.email or u.phone }}">View</a>
-            {% if not u.is_active %}
-              &nbsp;
-              <form method="post" action="/admin/activate/{{ u.email or u.phone }}" style="display:inline">
-                <button type="submit" class="btn-sm btn-primary">Activate</button>
-              </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+            <div class="user-email">{{ u.email or u.phone }}</div>
+          </div>
+        </div>
+
+        <!-- 2×2 key info grid -->
+        <div class="uc-meta">
+          <div class="uc-meta-item">
+            <div class="uc-meta-label">Signed Up</div>
+            <div class="uc-meta-val">{{ u.created_at[:10] if u.created_at else "—" }}</div>
+          </div>
+          <div class="uc-meta-item">
+            <div class="uc-meta-label">Last Active</div>
+            <div class="uc-meta-val">{{ u.updated_at[:10] if u.updated_at else "—" }}</div>
+          </div>
+          <div class="uc-meta-item">
+            <div class="uc-meta-label">Flow</div>
+            <div class="uc-meta-val">
+              {% if u.flow and u.flow != "idle" %}
+                <span class="step-pill">{{ u.flow }}/{{ u.resume_step or u.interview_step or "—" }}</span>
+              {% else %}
+                <span style="color:#bbb">idle</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="uc-meta-item">
+            <div class="uc-meta-label">Subscription</div>
+            <div class="uc-meta-val">
+              {% if u.is_active %}
+                <span class="badge badge-green">Active · {{ u.days_left }}d</span>
+              {% else %}
+                <span class="badge badge-grey">Inactive</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="uc-actions">
+          <a class="btn-sm btn-ghost" href="/admin/user/{{ u.email or u.phone }}">View</a>
+          {% if not u.is_active %}
+            <form method="post" action="/admin/activate/{{ u.email or u.phone }}" style="flex:1">
+              <button type="submit" class="btn-sm btn-primary" style="width:100%">Activate</button>
+            </form>
+          {% endif %}
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
     {% else %}
     <div class="empty">No users yet.</div>
     {% endif %}

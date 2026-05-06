@@ -127,6 +127,25 @@ class WebMessenger(Messenger):
             "ts":           time.time(),
         })
 
+    async def send_document_url(
+        self,
+        user_id: str,
+        url: str,
+        storage_path: str,
+        filename: str,
+        caption: Optional[str] = None,
+    ) -> None:
+        """Push a document event for an already-uploaded file (no re-upload)."""
+        await self._push(user_id, {
+            "type":         "document",
+            "url":          url,
+            "filename":     filename,
+            "storage_path": storage_path,
+            "size":         0,
+            "caption":      caption,
+            "ts":           time.time(),
+        })
+
     # send_typing_indicator ─────────────────────────────────────────────────
 
     async def send_typing_indicator(self, user_id: str) -> None:

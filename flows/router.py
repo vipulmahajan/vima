@@ -82,16 +82,32 @@ def _is_continuation_intent(text: str) -> bool:
     return any(word in t for word in _CONTINUATION_SUBSTRINGS)
 
 
-def _returning_user_reply(to: str, *, role: str = "", first_name: str = "") -> dict[str, Any]:
-    """3-option prompt shown to returning users who have saved context."""
-    role_text = f" for *{role}*" if role else ""
+def _returning_user_reply(
+    to: str,
+    *,
+    data: Optional[dict] = None,
+    first_name: str = "",
+) -> dict[str, Any]:
+    """4-option prompt shown to returning users who have saved context."""
+    data = data or {}
+    role = (data.get("current_role_target") or "").strip()
+    has_sources = bool(data.get("resume_sources"))
+
+    if role:
+        context_line = f"I can see you were building a resume for *{role}*."
+    elif has_sources:
+        context_line = "I have your resume details saved."
+    else:
+        context_line = "you were working on a resume."
+
     name_part = f" {first_name}" if first_name else ""
     text = (
-        f"Welcome back{name_part}! I can see you were building a resume{role_text}. "
+        f"Welcome back{name_part}! {context_line} "
         "What would you like to do?\n\n"
         "*1.* Prepare for the interview for this role\n"
         "*2.* Build a resume for a different role\n"
-        "*3.* Start something new"
+        "*3.* Start something new\n"
+        "*4.* Get my resume again — resend the file"
     )
     return _text_reply(to, text)
 
@@ -171,9 +187,14 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
 
     data = state.get("data") or {}
 
-    # Handle replies to the returning-user 3-option prompt.
+    # Handle replies to the returning-user 4-option prompt.
     if data.get("awaiting_returning_choice"):
-        role = (data.get("current_role_target") or "").strip()
+        # Check for artifact resend keywords before numbered options.
+        if resume_flow._is_resend_request(t_lower):
+            await merge_user_state_data(user_id, {"awaiting_returning_choice": False})
+            reply = await resume_flow._resend_resume_artifact(user_id)
+            await _deliver(user_id, reply)
+            return
         if t_lower in ("1", "interview", "prepare", "interview prep", "yes", "sure", "ok"):
             # Interview for same role — jump directly with pre-filled context.
             await merge_user_state_data(user_id, {"awaiting_returning_choice": False})
@@ -185,7 +206,7 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
             reply = await interview_flow.handle(user_id, message, state)
             await _deliver(user_id, reply)
             return
-        if t_lower in ("2", "new resume", "different role", "resume"):
+        if t_lower in ("2", "new resume", "different role"):
             # New resume for a different role — clear old context, start fresh.
             await merge_user_state_data(user_id, {"awaiting_returning_choice": False,
                                                    "current_role_target": None,
@@ -206,8 +227,14 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
             })
             await _deliver(user_id, _menu_reply(user_id, first_name=first_name))
             return
-        # Unrecognised reply — re-show the 3-option prompt.
-        await _deliver(user_id, _returning_user_reply(user_id, role=role, first_name=first_name))
+        if t_lower in ("4", "get my resume", "resend", "download", "send again", "resume again"):
+            # Re-deliver the most recent saved resume artifact.
+            await merge_user_state_data(user_id, {"awaiting_returning_choice": False})
+            reply = await resume_flow._resend_resume_artifact(user_id)
+            await _deliver(user_id, reply)
+            return
+        # Unrecognised reply — re-show the 4-option prompt.
+        await _deliver(user_id, _returning_user_reply(user_id, data=data, first_name=first_name))
         return
 
     # Handle continue / new replies from the in-progress prompt (mid-flow pause).
@@ -257,9 +284,8 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
 
         # flow=idle but saved context exists → returning user who completed delivery.
         if _has_saved_context(data):
-            role = (data.get("current_role_target") or "").strip()
             await merge_user_state_data(user_id, {"awaiting_returning_choice": True})
-            await _deliver(user_id, _returning_user_reply(user_id, role=role, first_name=first_name))
+            await _deliver(user_id, _returning_user_reply(user_id, data=data, first_name=first_name))
             return
 
         # Truly new / no context — show menu.
@@ -303,9 +329,8 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
             # User has prior context but sent a free-form message — check if
             # it's a continuation intent, otherwise show the returning prompt.
             if _is_continuation_intent(t):
-                role = (data.get("current_role_target") or "").strip()
                 await merge_user_state_data(user_id, {"awaiting_returning_choice": True})
-                await _deliver(user_id, _returning_user_reply(user_id, role=role, first_name=first_name))
+                await _deliver(user_id, _returning_user_reply(user_id, data=data, first_name=first_name))
                 return
             # Not clearly a continuation — let Claude handle it as coaching chat.
             claude = ClaudeService()

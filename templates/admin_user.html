@@ -237,6 +237,45 @@
       font-size: 13px;
       color: #555;
     }
+
+    /* Payment table scroll on small screens */
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* JSON card needs min-width:0 so the pre doesn't blow out the grid */
+    .json-card-body { padding: 0; min-width: 0; overflow: hidden; }
+
+    @media (max-width: 768px) {
+      .topbar { padding: 0 16px; height: 48px; }
+      .topbar-brand { font-size: 18px; }
+      .topbar-back, .topbar-logout { font-size: 12px; }
+
+      .page { padding: 16px 12px 60px; }
+
+      .grid-2 { grid-template-columns: 1fr; }
+
+      .card-body { padding: 14px; }
+
+      .actions { flex-direction: column; gap: 8px; }
+      .actions form { width: 100%; }
+      .actions .btn { width: 100%; display: block; text-align: center; }
+
+      .artifact-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .artifact-row > div:last-child { width: 100%; }
+      .artifact-row a[href] {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 7px 0;
+        background: #F5F0E8;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+    }
   </style>
 </head>
 <body>
@@ -327,7 +366,7 @@
         {% if payments %}
         <div style="margin-top:20px">
           <div style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Payment History</div>
-          <table>
+          <div class="table-scroll"><table>
             <thead>
               <tr>
                 <th>Amount</th>
@@ -352,7 +391,7 @@
               </tr>
               {% endfor %}
             </tbody>
-          </table>
+          </table></div>
         </div>
         {% endif %}
       </div>
@@ -366,7 +405,7 @@
     <!-- State data -->
     <div class="card">
       <div class="card-header">Flow State Data</div>
-      <div class="card-body" style="padding:0">
+      <div class="card-body json-card-body">
         <pre class="json-block">{{ data_json }}</pre>
       </div>
     </div>

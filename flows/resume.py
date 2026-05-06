@@ -822,16 +822,76 @@ _EDIT_KEYWORDS = {
     "shorten", "expand",
 }
 
+_RESEND_KEYWORDS = {
+    "same resume", "resume again", "send again", "resend",
+    "download", "get my resume", "share resume", "my resume",
+}
+
 
 def _is_edit_request(text: str) -> bool:
     t = text.lower()
     return any(kw in t for kw in _EDIT_KEYWORDS)
 
 
+def _is_resend_request(text: str) -> bool:
+    t = text.lower()
+    return any(kw in t for kw in _RESEND_KEYWORDS)
+
+
+async def _resend_resume_artifact(sender: str) -> dict[str, Any]:
+    """Find the most recent resume artifact and re-deliver it via a fresh signed URL.
+
+    Returns a _text reply if no artifact exists.
+    """
+    from models.database import get_user_artifacts
+    from services.storage_service import StorageService
+
+    artifacts = await get_user_artifacts(sender)
+    resume_art = next((a for a in artifacts if a.get("kind") == "resume"), None)
+
+    if not resume_art:
+        return _text(sender,
+            "I don't have a saved resume for you yet — reply *2* to build one now."
+        )
+
+    storage_path = resume_art.get("storage_path", "")
+    filename = storage_path.split("/")[-1] or "ViMa-Resume.docx"
+
+    try:
+        storage = StorageService()
+        signed_url = await storage.create_signed_url(storage_path, ttl_seconds=3600)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("resend_artifact signed_url failed: %s", exc)
+        return _text(sender,
+            "I couldn't generate the download link right now — try again in a moment."
+        )
+
+    messenger = await get_messenger(sender)
+
+    # Web channel — push a document event with the signed URL directly.
+    if hasattr(messenger, "send_document_url"):
+        await messenger.send_document_url(
+            sender,
+            url=signed_url,
+            storage_path=storage_path,
+            filename=filename,
+            caption="Here's your resume — the most recent version I created for you.",
+        )
+        return None  # type: ignore[return-value]
+
+    # WhatsApp / other channel — just send the URL as text.
+    return _text(sender,
+        f"Here's your resume — the most recent version I created for you:\n\n{signed_url}"
+    )
+
+
 async def _handle_done(
     sender: str, message: dict[str, Any], text: str,
 ) -> dict[str, Any]:
-    """After delivery, handle edit requests by regenerating with the user's feedback."""
+    """After delivery, handle resend requests, edit requests, and fallback nudge."""
+    if _is_resend_request(text):
+        return await _resend_resume_artifact(sender)
+
     if not _is_edit_request(text):
         return _text(sender,
             "Your resume is ready above. Reply *interview* to prep for this role, "
