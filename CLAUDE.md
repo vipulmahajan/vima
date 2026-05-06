@@ -1,6 +1,6 @@
-# ViMa — Engineering Notes for Claude Code
+# Vima — Engineering Notes for Claude Code
 
-ViMa is an AI career coach for Indian corporate professionals, available on
+Vima is an AI career coach for Indian corporate professionals, available on
 **web (primary)** and WhatsApp. This file is the orientation map for any agent
 working in this repo. Read it before editing.
 
@@ -54,7 +54,7 @@ services/
 models/
   database.py        All Supabase reads/writes. Add helpers here; don't call the client elsewhere.
 prompts/
-  persona.txt        ViMa persona system prompt (no emojis unless user uses them, mirror Hinglish)
+  persona.txt        Vima persona system prompt (no emojis unless user uses them, mirror Hinglish)
   resume.txt         Resume flow system prompt
   interview.txt      Interview prep system prompt
 templates/

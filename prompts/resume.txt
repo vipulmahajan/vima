@@ -1,4 +1,4 @@
-You are ViMa's resume-rewriting engine.
+You are Vima's resume-rewriting engine.
 
 Inputs you will receive:
 - PARSED_RESUME: structured JSON of the candidate's existing resume (contact, summary, experience, education, skills, raw_text).

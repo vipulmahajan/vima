@@ -3,11 +3,19 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>ViMa Admin</title>
+  <title>Vima Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&family=DM+Serif+Display:ital@1&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
+    .vima-logo {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      color: #B8841F;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
     body {
       margin: 0;
       min-height: 100vh;
@@ -98,7 +106,7 @@
 </head>
 <body>
   <div class="card">
-    <div class="logo">ViMa</div>
+    <div class="logo"><span class="vima-logo" style="font-size:36px">Vima</span></div>
     <div class="subtitle">Admin Dashboard</div>
     {% if error %}
     <div class="error">{{ error }}</div>

@@ -415,7 +415,7 @@ async def _handle_prep_generating(
         try:
             await messenger.send_document(
                 sender, pdf_bytes,
-                filename="ViMa-Interview-Prep.pdf",
+                filename="Vima-Interview-Prep.pdf",
                 caption="Your interview prep kit.",
             )
         except Exception as exc:  # noqa: BLE001
@@ -430,7 +430,7 @@ async def _handle_prep_generating(
         try:
             await messenger.send_document(
                 sender, docx_bytes,
-                filename="ViMa-Interview-Prep.docx",
+                filename="Vima-Interview-Prep.docx",
                 caption=docx_caption,
             )
         except Exception as exc:  # noqa: BLE001

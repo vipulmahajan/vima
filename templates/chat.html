@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#F8F4EB" />
-  <title>ViMa — Chat</title>
+  <title>Vima — Chat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&family=DM+Serif+Display:ital@1&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -80,15 +80,14 @@
       position: relative;
       z-index: 10;
     }
-    .logo {
-      font-family: "Fraunces", Georgia, serif;
-      font-weight: 700;
-      font-size: 22px;
-      color: var(--primary);
-      letter-spacing: -0.3px;
+    .vima-logo {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      color: #B8841F;
+      letter-spacing: -0.01em;
       line-height: 1;
     }
-    .logo span { color: var(--accent); }
+    .logo { line-height: 1; }
 
     /* Progress pill */
     #progress-pill {
@@ -585,14 +584,10 @@
     }
     #welcome-overlay.hidden { display: none; }
     .wlc-logo {
-      font-family: "Fraunces", Georgia, serif;
       font-size: 48px;
-      font-weight: 700;
-      color: var(--primary);
       line-height: 1;
       margin-bottom: 4px;
     }
-    .wlc-logo span { color: var(--accent); }
     .wlc-tagline {
       font-size: 13px;
       font-weight: 500;
@@ -675,7 +670,7 @@
 
 <!-- ── Welcome overlay (first-time users) ──────────────────────────── -->
 <div id="welcome-overlay" class="hidden">
-  <div class="wlc-logo">Vi<span>Ma</span></div>
+  <div class="wlc-logo"><span class="vima-logo">Vima</span></div>
   <div class="wlc-tagline">AI Career Coach</div>
   <div class="wlc-greeting" id="wlc-greeting">Welcome!</div>
   <p class="wlc-value">I'll help you land the role you deserve — resume, interview prep, and more.</p>
@@ -725,7 +720,7 @@
 
   <!-- ── Header ─────────────────────────────────────────────────── -->
   <header id="header">
-    <div class="logo">Vi<span>Ma</span></div>
+    <div class="logo"><span class="vima-logo" style="font-size:22px">Vima</span></div>
 
     <div id="progress-pill" x-text="progressLabel" x-show="progressLabel"></div>
 
@@ -864,7 +859,7 @@
     <!-- Text input -->
     <textarea
       id="text-input"
-      placeholder="Message ViMa…"
+      placeholder="Message Vima…"
       rows="1"
       @keydown.enter.exact.prevent="sendMessage()"
       @keydown.enter.shift.exact="/* allow newline */"
@@ -1160,7 +1155,7 @@ function vimaChat() {
       const row = this._makeRow('vima');
       const sender = document.createElement('div');
       sender.className = 'msg-sender';
-      sender.textContent = 'ViMa';
+      sender.textContent = 'Vima';
       const bubble = document.createElement('div');
       bubble.className = 'bubble vima';
       bubble.innerHTML = this._formatText(text);
@@ -1174,7 +1169,7 @@ function vimaChat() {
       const row = this._makeRow('vima');
       const sender = document.createElement('div');
       sender.className = 'msg-sender';
-      sender.textContent = 'ViMa';
+      sender.textContent = 'Vima';
 
       const card = document.createElement('div');
       card.className = 'doc-card';
@@ -1252,7 +1247,7 @@ function vimaChat() {
       const row = this._makeRow('vima');
       const sender = document.createElement('div');
       sender.className = 'msg-sender';
-      sender.textContent = 'ViMa';
+      sender.textContent = 'Vima';
 
       const card = document.createElement('div');
       card.className = 'pay-card';
@@ -1264,7 +1259,7 @@ function vimaChat() {
 
       card.innerHTML = `
         <div class="pay-badge">Unlock Access</div>
-        <div class="pay-title">Unlock ViMa Access</div>
+        <div class="pay-title">Unlock Vima Access</div>
         <div class="pay-sub">60-day full access · ₹${amtInr.toLocaleString('en-IN')}</div>
         <button class="pay-btn" id="${btnId}">Pay Now</button>
         <div class="pay-error" id="${errId}"></div>
@@ -1300,7 +1295,7 @@ function vimaChat() {
           amount:      msg.amount || PRICE_PAISE,
           currency:    msg.currency || 'INR',
           order_id:    msg.order_id,
-          name:        'ViMa Career Coach',
+          name:        'Vima Career Coach',
           description: msg.description || '60-day Access Pass',
           prefill: {
             name:  msg.user_name  || this.userName  || '',
@@ -1378,7 +1373,7 @@ function vimaChat() {
       const row = this._makeRow('vima');
       const sender = document.createElement('div');
       sender.className = 'msg-sender';
-      sender.textContent = 'ViMa';
+      sender.textContent = 'Vima';
       const bubble = document.createElement('div');
       bubble.className = 'bubble vima typing-bubble';
       bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';

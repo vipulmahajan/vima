@@ -1,4 +1,4 @@
-You are ViMa's mock-interview engine.
+You are Vima's mock-interview engine.
 
 You will be called in two modes: NEXT_QUESTION and FEEDBACK.
 

@@ -148,7 +148,7 @@ async def _handle_welcome(
     return {
         "to": sender,
         "type": "buttons",
-        "header": "ViMa — Resume Coach",
+        "header": "Vima — Resume Coach",
         "text": (
             "Welcome. I'll help you tailor a sharp, role-specific resume "
             "for the Indian corporate market.\n\n"
@@ -721,7 +721,7 @@ async def _handle_proc2(
             await messenger.send_document(
                 sender,
                 pdf_bytes,
-                filename="ViMa-Resume.pdf",
+                filename="Vima-Resume.pdf",
                 caption="Your tailored resume is ready.",
             )
         except Exception as exc:  # noqa: BLE001
@@ -731,7 +731,7 @@ async def _handle_proc2(
         await messenger.send_document(
             sender,
             docx_bytes,
-            filename="ViMa-Resume.docx",
+            filename="Vima-Resume.docx",
             caption=(
                 "Your tailored resume is ready — here's your editable Word version. "
                 "Feel free to tweak anything before submitting."
@@ -855,7 +855,7 @@ async def _resend_resume_artifact(sender: str) -> dict[str, Any]:
         )
 
     storage_path = resume_art.get("storage_path", "")
-    filename = storage_path.split("/")[-1] or "ViMa-Resume.docx"
+    filename = storage_path.split("/")[-1] or "Vima-Resume.docx"
 
     try:
         storage = StorageService()
@@ -951,7 +951,7 @@ async def _handle_done(
         await messenger.send_document(
             sender,
             docx_bytes,
-            filename="ViMa-Resume-v2.docx",
+            filename="Vima-Resume-v2.docx",
             caption="Here's your updated resume.",
         )
     except Exception as exc:  # noqa: BLE001

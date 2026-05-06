@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>ViMa Admin — {{ user.email }}</title>
+  <title>Vima Admin — {{ user.email }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&family=DM+Serif+Display:ital@1&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
@@ -19,6 +20,13 @@
     a { color: #B8841F; text-decoration: none; }
     a:hover { text-decoration: underline; }
 
+    .vima-logo {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      color: #B8841F;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
     .topbar {
       background: #2A2A2A;
       color: #F8F4EB;
@@ -32,12 +40,7 @@
       z-index: 100;
     }
     .topbar-left { display: flex; align-items: center; gap: 16px; }
-    .topbar-brand {
-      font-family: "Fraunces", Georgia, serif;
-      font-size: 22px;
-      font-weight: 700;
-      color: #B8841F;
-    }
+    .topbar-brand { display: flex; align-items: center; }
     .topbar-back { font-size: 13px; color: #aaa; }
     .topbar-back:hover { color: #F8F4EB; }
     .topbar-logout { font-size: 13px; color: #aaa; }
@@ -282,7 +285,7 @@
 
 <div class="topbar">
   <div class="topbar-left">
-    <div class="topbar-brand">ViMa</div>
+    <div class="topbar-brand"><span class="vima-logo" style="font-size:24px">Vima</span></div>
     <a class="topbar-back" href="/admin">← All Users</a>
   </div>
   <a class="topbar-logout" href="/admin/logout">Sign out</a>

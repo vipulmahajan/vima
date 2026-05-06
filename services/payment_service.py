@@ -53,7 +53,7 @@ log = logging.getLogger(__name__)
 # Hard-coded contract values for the access pass. Amount itself is read from
 # settings.price_subscription_paise so it can be tuned without code changes.
 ACCESS_PASS_DURATION_DAYS = 60
-ACCESS_PASS_DESCRIPTION   = "ViMa Career Coach — 30+30 days Access Pass"
+ACCESS_PASS_DESCRIPTION   = "Vima Career Coach — 30+30 days Access Pass"
 ACCESS_PASS_LINK_TTL_SEC  = 24 * 60 * 60   # 24 hours
 
 PAYMENT_TYPE_ACCESS_PASS     = "access_pass"

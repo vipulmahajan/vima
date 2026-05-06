@@ -52,7 +52,7 @@ _STRATEGY_MAX_TOKENS = 600
 # ── Interview prep system prompt (cached alongside persona) ─────────────────
 
 _INTERVIEW_PREP_SYSTEM = """\
-You are ViMa's interview-prep engine.
+You are Vima's interview-prep engine.
 
 Your job: produce a single JSON object — the candidate's interview prep kit
 for ONE specific upcoming interview round. Output ONLY the JSON object;

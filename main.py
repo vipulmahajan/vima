@@ -1,4 +1,4 @@
-"""ViMa - WhatsApp-first AI Career Coach.
+"""Vima - WhatsApp-first AI Career Coach.
 
 FastAPI application entrypoint. Receives Gupshup WhatsApp webhooks, routes
 inbound messages through flow handlers, and dispatches replies via Gupshup.
@@ -105,7 +105,7 @@ log = logging.getLogger("vima")
 # ── Lifespan ────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("Starting ViMa (env=%s, echo_mode=%s)", settings.app_env, settings.echo_mode)
+    log.info("Starting Vima (env=%s, echo_mode=%s)", settings.app_env, settings.echo_mode)
     if not settings.echo_mode:
         try:
             await init_db()
@@ -237,7 +237,7 @@ def _parse_ts(value: Any) -> Optional[_dt.datetime]:
 
 
 app = FastAPI(
-    title="ViMa - AI Career Coach",
+    title="Vima - AI Career Coach",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -280,6 +280,45 @@ async def privacy() -> HTMLResponse:
     template = _site_env.get_template("privacy.html")
     html = template.render(support_email=settings.support_email)
     return HTMLResponse(html)
+
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms() -> HTMLResponse:
+    template = _site_env.get_template("terms.html")
+    return HTMLResponse(template.render())
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt() -> PlainTextResponse:
+    content = (Path(__file__).resolve().parent / "templates" / "robots.txt").read_text()
+    return PlainTextResponse(content, media_type="text/plain")
+
+
+@app.get("/sitemap.xml", response_class=HTMLResponse)
+async def sitemap_xml() -> HTMLResponse:
+    today = _dt.date.today().isoformat()
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://vima.coach/</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://vima.coach/privacy</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://vima.coach/terms</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>"""
+    return HTMLResponse(xml, media_type="application/xml")
 
 
 @app.get("/chat", response_class=HTMLResponse, response_model=None)
@@ -1177,7 +1216,7 @@ def _echo_reply(sender: str, message: dict[str, Any]) -> dict[str, Any]:
     msg_type = message.get("type", "unknown")
     text     = (message.get("text") or "").strip()
 
-    greeting = "Hi, I'm *ViMa* — your AI career coach. 👋"
+    greeting = "Hi, I'm *Vima* — your AI career coach. 👋"
 
     if msg_type == "text" and text:
         body = (
@@ -1191,7 +1230,7 @@ def _echo_reply(sender: str, message: dict[str, Any]) -> dict[str, Any]:
     elif msg_type == "document":
         body = f"{greeting}\n\nGot your document. Resume parsing is on the way."
     elif msg_type == "image":
-        body = f"{greeting}\n\nGot your image. Thanks for trying ViMa."
+        body = f"{greeting}\n\nGot your image. Thanks for trying Vima."
     else:
         body = f"{greeting}\n\nGot your message. Reply with text to chat."
 

@@ -670,7 +670,7 @@ def _welcome_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
     """First-time greeting for web users who just dismissed the onboarding overlay."""
     greeting = f"Hey {first_name}!" if first_name else "Hey!"
     text = (
-        f"{greeting} I'm *ViMa* — your senior career coach.\n\n"
+        f"{greeting} I'm *Vima* — your senior career coach.\n\n"
         "Where are you in your career transition?\n\n"
         "*1.* Building a tailored resume\n"
         "*2.* Preparing for interviews\n\n"

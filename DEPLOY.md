@@ -1,6 +1,6 @@
-# Deploying ViMa to Railway
+# Deploying Vima to Railway
 
-End-to-end checklist for shipping ViMa to production. Follow it top-to-bottom
+End-to-end checklist for shipping Vima to production. Follow it top-to-bottom
 the first time; on subsequent deploys you'll only repeat steps 7-8.
 
 ---
@@ -28,7 +28,7 @@ From the project root (`C:\Users\VM\vima` on your machine):
 ```bash
 git init                                       # if not already a repo
 git add .
-git commit -m "Initial ViMa production build"
+git commit -m "Initial Vima production build"
 git branch -M main
 git remote add origin https://github.com/vipulmahajan/vima.git
 git push -u origin main
@@ -237,7 +237,7 @@ To go live:
    allow-list. It should work.
 
 > **Don't skip this.** Sandbox numbers can only receive messages from
-> opted-in test contacts; real users will never see ViMa replies.
+> opted-in test contacts; real users will never see Vima replies.
 
 ---
 
@@ -248,7 +248,7 @@ From a real WhatsApp client (NOT the sandbox test contact), send:
 1. `hi` → should receive the 5-stage menu.
 2. `2` → should enter the resume flow at Q1.
 3. Walk through Q1-Q6.
-4. At Q6 → ViMa generates the resume → sends the payment link.
+4. At Q6 → Vima generates the resume → sends the payment link.
 5. Pay through Razorpay (use a real ₹1,799 transaction or create a test
    coupon for yourself).
 6. Within ~30 seconds you should receive: PDF resume + DOCX resume +

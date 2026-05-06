@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ViMa Admin</title>
+  <title>Vima Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&family=DM+Serif+Display:ital@1&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
@@ -33,20 +34,24 @@
       z-index: 100;
       gap: 8px;
     }
-    .topbar-brand {
-      font-family: "Fraunces", Georgia, serif;
-      font-size: 20px;
-      font-weight: 700;
+    .vima-logo {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
       color: #B8841F;
-      letter-spacing: -0.3px;
-      white-space: nowrap;
+      letter-spacing: -0.01em;
+      line-height: 1;
     }
-    .topbar-brand span {
+    .topbar-brand {
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .topbar-brand .admin-label {
       color: #F8F4EB;
       font-size: 12px;
       font-family: "Inter", sans-serif;
       font-weight: 400;
-      margin-left: 8px;
       opacity: 0.6;
     }
     .topbar-logout { font-size: 13px; color: #aaa; white-space: nowrap; flex-shrink: 0; }
@@ -285,7 +290,7 @@
 <body>
 
 <div class="topbar">
-  <div class="topbar-brand">ViMa <span>Admin</span></div>
+  <div class="topbar-brand"><span class="vima-logo" style="font-size:24px">Vima</span><span class="admin-label">Admin</span></div>
   <a class="topbar-logout" href="/admin/logout">Sign out</a>
 </div>
 

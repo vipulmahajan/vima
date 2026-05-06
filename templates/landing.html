@@ -3,329 +3,511 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#B8841F" />
-  <title>ViMa — AI Career Coach for Indian Professionals</title>
-  <meta name="description" content="Tailored resumes, round-by-round interview prep, and honest mentorship. Get started free — no app to install." />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230a4a8c'/%3E%3Ctext x='50' y='62' font-family='Georgia,serif' font-size='52' font-weight='700' fill='%23fff' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E" />
+  <meta name="robots" content="index, follow" />
+  <title>Vima — Executive Career Coaching, Powered by AI</title>
+  <meta name="description" content="Vima is an AI career coach built for senior professionals in India. Get a tailored resume or interview prep in minutes — built around your exact role and hiring manager." />
+  <link rel="canonical" href="https://vima.coach" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Vima — Executive Career Coaching, Powered by AI" />
+  <meta property="og:description" content="Vima is an AI career coach built for senior professionals in India. Get a tailored resume or interview prep in minutes — built around your exact role and hiring manager." />
+  <meta property="og:url" content="https://vima.coach" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://vima.coach/static/og-image.jpg" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Vima — Executive Career Coaching, Powered by AI" />
+  <meta name="twitter:description" content="Vima is an AI career coach built for senior professionals in India. Get a tailored resume or interview prep in minutes." />
+  <meta name="twitter:image" content="https://vima.coach/static/og-image.jpg" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&family=DM+Serif+Display:ital@1&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23B8841F'/%3E%3Ctext x='50' y='66' font-family='Georgia,serif' font-size='56' font-weight='700' fill='%23F8F4EB' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E" />
+
+  <!-- Structured Data: SoftwareApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Vima",
+    "applicationCategory": "BusinessApplication",
+    "url": "https://vima.coach",
+    "description": "AI-powered executive career coaching for senior professionals in India",
+    "offers": {
+      "@type": "Offer",
+      "price": "1799",
+      "priceCurrency": "INR",
+      "description": "60-day full access"
+    },
+    "operatingSystem": "Web Browser"
+  }
+  </script>
+
+  <!-- Structured Data: FAQPage -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How is Vima different from ChatGPT or LinkedIn AI?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Generic AI gives generic resumes. Vima learns your specific situation — your role, the exact JD, the company, and who the hiring manager is — then builds something that couldn't have been written for anyone else. It's the difference between a template and a tailored suit."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is Vima better than a professional resume writer?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "A good resume writer takes two weeks and ₹5,000–₹15,000. Vima does what they do — mapping your experience to the JD, researching the hiring manager, explaining the strategy — in 9 minutes. And you can iterate instantly."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What level of professional is Vima designed for?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Senior professionals — Managers, Senior Managers, Directors, VPs, and above — at Indian and global companies. If the competition is intense and the stakes are high, Vima is built for you."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Vima work across industries?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes — BFSI, IT services, consulting, FMCG, pharma, manufacturing, startups. Vima understands Indian corporate context: CTC structures, notice periods, reporting hierarchies, and what hiring managers in each sector look for."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is my resume data safe?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your documents are encrypted and stored securely on Indian servers. Vima uses your information only to generate your outputs — never shared, never sold. You can request deletion at any time."
+        }
+      }
+    ]
+  }
+  </script>
 
   <style>
-    /* ── Reset / base ───────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                   "Helvetica Neue", Arial, sans-serif;
-      color: #0f172a;
-      background: #ffffff;
-      line-height: 1.55;
+      background: #F8F4EB;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #2A2A2A;
+      line-height: 1.6;
       font-size: 16px;
       -webkit-font-smoothing: antialiased;
     }
-    a { color: #0a4a8c; text-decoration: none; }
+    a { color: #B8841F; text-decoration: none; }
     a:hover { text-decoration: underline; }
     img { max-width: 100%; display: block; }
 
-    .container {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 0 20px;
+    .container { max-width: 740px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Logotype ─────────────────────────────────────────────── */
+    .vima-logo {
+      font-family: 'DM Serif Display', serif;
+      font-style: italic;
+      color: #B8841F;
+      letter-spacing: -0.01em;
+      line-height: 1;
     }
 
     /* ── Header ─────────────────────────────────────────────── */
     .topbar {
-      padding: 22px 0 8px;
+      padding: 20px 0 16px;
+      border-bottom: 1px solid #E5DDD0;
     }
-    .brand {
+    .topbar-inner {
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: space-between;
     }
-    .brand-mark {
-      width: 40px; height: 40px;
-      background: #0a4a8c;
-      color: #fff;
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 22px; font-weight: 700;
+    .topbar-signin {
+      font-size: 14px;
+      font-weight: 600;
+      color: #2A2A2A;
     }
-    .brand-name {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: 0.2px;
-      color: #0a4a8c;
-    }
+    .topbar-signin:hover { color: #B8841F; text-decoration: none; }
 
-    /* ── Hero ───────────────────────────────────────────────── */
+    /* ── Hero ─────────────────────────────────────────────────── */
     .hero {
-      padding: 32px 0 24px;
-      text-align: left;
+      padding: 56px 0 48px;
+      border-bottom: 1px solid #E5DDD0;
+    }
+    .hero-wordmark {
+      display: block;
+      font-size: 56px;
+      margin-bottom: 20px;
     }
     .hero h1 {
-      margin: 0 0 14px 0;
-      font-size: 32px;
-      line-height: 1.2;
+      margin: 0 0 16px 0;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 36px;
+      line-height: 1.18;
       font-weight: 700;
-      color: #0f172a;
-    }
-    .hero .lead {
-      margin: 0 0 24px 0;
-      font-size: 17px;
-      color: #475569;
+      color: #2A2A2A;
       max-width: 560px;
     }
-
-    .cta {
+    .hero-sub {
+      margin: 0 0 32px 0;
+      font-size: 17px;
+      color: #555;
+      max-width: 560px;
+      line-height: 1.65;
+    }
+    .cta-primary {
       display: inline-block;
-      background: #0a4a8c;
-      color: #ffffff;
+      background: #B8841F;
+      color: #fff;
       font-weight: 600;
-      font-size: 17px;
-      padding: 16px 28px;
-      border-radius: 12px;
-      box-shadow: 0 6px 14px rgba(10, 74, 140, 0.18);
-      transition: background 0.15s ease, transform 0.05s ease;
+      font-size: 16px;
+      padding: 15px 28px;
+      border-radius: 10px;
+      transition: background 0.15s;
+      text-decoration: none;
     }
-    .cta:hover { background: #08407a; text-decoration: none; }
-    .cta:active { transform: translateY(1px); }
-    .cta-row { margin-top: 8px; }
-    .cta-sub {
-      display: block;
-      margin-top: 10px;
-      font-size: 13.5px;
-      color: #64748b;
+    .cta-primary:hover { background: #9e6f18; color: #fff; text-decoration: none; }
+    .cta-secondary {
+      display: inline-block;
+      margin-left: 16px;
+      font-size: 15px;
+      color: #888;
     }
+    .cta-secondary:hover { color: #2A2A2A; text-decoration: none; }
+    .stat-bar {
+      margin-top: 28px;
+      font-size: 13px;
+      color: #999;
+      border-left: 3px solid #E5DDD0;
+      padding-left: 14px;
+      line-height: 1.55;
+    }
+    .stat-bar cite { font-style: normal; }
 
-    /* ── Sections ───────────────────────────────────────────── */
+    /* ── Sections ─────────────────────────────────────────────── */
     section {
-      padding: 28px 0;
-      border-top: 1px solid #e2e8f0;
+      padding: 56px 0;
+      border-bottom: 1px solid #E5DDD0;
     }
-    h2 {
-      font-size: 14px;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      color: #0a4a8c;
-      margin: 0 0 14px 0;
-      font-weight: 700;
-    }
-    h3 {
-      font-size: 17px;
-      margin: 0 0 6px 0;
+    .section-label {
+      font-size: 11px;
       font-weight: 600;
-      color: #0f172a;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #B8841F;
+      margin: 0 0 12px 0;
     }
-    p { margin: 0 0 12px 0; }
+    .section-heading {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #2A2A2A;
+      margin: 0 0 32px 0;
+      line-height: 1.2;
+    }
 
-    /* ── Value props ────────────────────────────────────────── */
-    .props {
+    /* ── Social proof cards ───────────────────────────────────── */
+    .proof-grid {
       display: grid;
       gap: 16px;
       grid-template-columns: 1fr;
     }
-    @media (min-width: 640px) {
-      .props { grid-template-columns: 1fr 1fr 1fr; }
+    @media (min-width: 600px) {
+      .proof-grid { grid-template-columns: 1fr 1fr 1fr; }
     }
-    .prop {
-      padding: 18px 18px 16px;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      background: #f8fafc;
+    .proof-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 22px 20px;
+      box-shadow: 0 1px 6px rgba(42,42,42,0.06);
     }
-    .prop p { color: #475569; font-size: 14.5px; margin: 0; }
-
-    /* ── How it works ───────────────────────────────────────── */
-    ol.steps {
-      list-style: none;
-      padding: 0;
+    .proof-card p {
       margin: 0;
-      counter-reset: step;
+      font-size: 14px;
+      color: #444;
+      line-height: 1.6;
     }
-    ol.steps li {
+    .proof-note {
+      margin-top: 20px;
+      font-size: 13px;
+      color: #aaa;
+      font-style: italic;
+    }
+
+    /* ── How it works ─────────────────────────────────────────── */
+    .steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
+    .steps li {
       counter-increment: step;
-      padding: 14px 0 14px 52px;
-      position: relative;
-      border-bottom: 1px dashed #e2e8f0;
+      display: flex;
+      gap: 20px;
+      padding: 20px 0;
+      border-bottom: 1px dashed #E5DDD0;
     }
-    ol.steps li:last-child { border-bottom: 0; }
-    ol.steps li::before {
-      content: counter(step);
-      position: absolute;
-      left: 0; top: 12px;
+    .steps li:last-child { border-bottom: none; padding-bottom: 0; }
+    .step-num {
+      flex-shrink: 0;
       width: 36px; height: 36px;
-      background: #0a4a8c;
-      color: #fff;
       border-radius: 50%;
+      background: #2A2A2A;
+      color: #F8F4EB;
       display: flex; align-items: center; justify-content: center;
       font-weight: 700;
-      font-size: 15px;
+      font-size: 14px;
     }
-    ol.steps strong { color: #0f172a; }
-    ol.steps p { color: #475569; font-size: 14.5px; margin: 4px 0 0 0; }
+    .step-body { flex: 1; }
+    .step-body strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+      color: #2A2A2A;
+      margin-bottom: 4px;
+    }
+    .step-body p { margin: 0; font-size: 14px; color: #666; line-height: 1.6; }
 
-    /* ── Pricing ────────────────────────────────────────────── */
-    .pricing {
+    /* ── Pricing ──────────────────────────────────────────────── */
+    .pricing-box {
+      background: #fff;
+      border: 2px solid #B8841F;
+      border-radius: 16px;
+      padding: 36px 32px;
       text-align: center;
-      padding: 26px 18px;
-      border: 2px solid #0a4a8c;
-      border-radius: 14px;
-      background: #f0f7ff;
+      max-width: 420px;
+      margin: 0 auto;
     }
-    .pricing .amount {
-      font-size: 36px;
+    .pricing-amount {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 40px;
       font-weight: 700;
-      color: #0a4a8c;
-      margin: 6px 0 2px;
+      color: #B8841F;
+      margin-bottom: 4px;
     }
-    .pricing .label {
-      font-size: 15px;
-      color: #475569;
-      margin: 0 0 10px;
+    .pricing-period {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 16px;
     }
-    .pricing ul {
-      text-align: left;
-      max-width: 360px;
-      margin: 14px auto 18px;
-      padding: 0;
-      list-style: none;
-    }
-    .pricing li {
-      padding: 6px 0 6px 26px;
-      position: relative;
-      color: #334155;
-      font-size: 14.5px;
-    }
-    .pricing li::before {
-      content: "✓";
-      color: #0a4a8c;
-      font-weight: 700;
-      position: absolute;
-      left: 0; top: 6px;
+    .pricing-desc {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.65;
+      margin-bottom: 24px;
     }
 
-    /* ── Footer ─────────────────────────────────────────────── */
+    /* ── FAQ ──────────────────────────────────────────────────── */
+    .faq-list { display: flex; flex-direction: column; gap: 2px; }
+    details {
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    details + details { margin-top: 6px; }
+    summary {
+      padding: 18px 20px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #2A2A2A;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "+";
+      font-size: 20px;
+      font-weight: 400;
+      color: #B8841F;
+      flex-shrink: 0;
+      margin-left: 12px;
+    }
+    details[open] summary::after { content: "−"; }
+    .faq-answer {
+      padding: 0 20px 18px;
+      font-size: 14px;
+      color: #555;
+      line-height: 1.7;
+    }
+
+    /* ── Footer ───────────────────────────────────────────────── */
     footer {
-      padding: 28px 0 32px;
-      border-top: 1px solid #e2e8f0;
-      color: #64748b;
-      font-size: 13.5px;
+      padding: 36px 0 40px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 12px;
     }
-    footer a { color: #475569; }
-    footer .copyright { color: #94a3b8; }
+    .footer-copy { font-size: 13px; color: #aaa; }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-links a { font-size: 13px; color: #888; }
+    .footer-links a:hover { color: #2A2A2A; }
 
-    /* ── Tiny screens tighten further ───────────────────────── */
-    @media (max-width: 360px) {
+    @media (max-width: 520px) {
+      .hero { padding: 40px 0 36px; }
+      .hero-wordmark { font-size: 44px; }
       .hero h1 { font-size: 28px; }
-      .cta     { padding: 14px 22px; font-size: 16px; }
+      .cta-secondary { display: none; }
+      footer { flex-direction: column; align-items: flex-start; gap: 8px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ── HEADER ─────────────────────────────────────────────── -->
+  <!-- ── HEADER ──────────────────────────────────────────────── -->
   <header class="topbar">
-    <div class="container brand" style="justify-content:space-between">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="brand-mark">V</div>
-        <div class="brand-name">ViMa</div>
-      </div>
-      <a href="/login" style="font-size:14px;font-weight:600;color:#0a4a8c;text-decoration:none">Sign in →</a>
+    <div class="container topbar-inner">
+      <span class="vima-logo" style="font-size:28px">Vima</span>
+      <a href="/login" class="topbar-signin">Sign in →</a>
     </div>
   </header>
 
-  <!-- ── HERO ───────────────────────────────────────────────── -->
-  <main class="container hero">
-    <h1>Your AI career coach, built for Indian professionals.</h1>
-    <p class="lead">
-      ViMa helps you walk into your next role prepared — tailored resume,
-      round-by-round interview prep, and honest mentorship. Right in your
-      browser. No app to install.
-    </p>
-    <p class="cta-row">
-      <a class="cta" href="/login">Get started free</a>
-      <span class="cta-sub">Sign in with Google · 60-day access · ₹{{ "{:,}".format(price_inr) }}</span>
-    </p>
-
-    <!-- Social proof -->
-    <p style="margin-top:24px;font-size:13.5px;color:#64748b;border-left:3px solid #e2e8f0;padding-left:14px;font-style:italic">
-      Trusted by professionals at HDFC Bank, Infosys, McKinsey and more —
-      <span style="font-style:normal;font-weight:600;color:#475569">real names coming soon after beta.</span>
-    </p>
-  </main>
-
-  <!-- ── VALUE PROPS ────────────────────────────────────────── -->
-  <section class="container">
-    <h2>What ViMa Does</h2>
-    <div class="props">
-      <div class="prop">
-        <h3>Tailored Resume</h3>
-        <p>A resume rewritten role-by-role for the job you're applying to —
-           ATS-clean, quantified, and honest. Delivered as PDF and Word.</p>
-      </div>
-      <div class="prop">
-        <h3>Interview Prep</h3>
-        <p>A round-specific prep kit: company brief, likely questions with
-           STAR-format answers from your own experience, and red flags to
-           avoid. Optional mock interview at the end.</p>
-      </div>
-      <div class="prop">
-        <h3>Trusted Mentor</h3>
-        <p>Free-form coaching on salary, role transitions, manager problems —
-           grounded in the Indian corporate context, no hype.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── HOW IT WORKS ───────────────────────────────────────── -->
-  <section class="container">
-    <h2>How It Works</h2>
-    <ol class="steps">
-      <li>
-        <strong>Sign in with Google.</strong>
-        <p>One click — no forms, no app download.</p>
-      </li>
-      <li>
-        <strong>Share your details.</strong>
-        <p>Upload your resume and JD. ViMa asks focused follow-ups —
-           the conversation feels human, not like filling a form.</p>
-      </li>
-      <li>
-        <strong>Get your output.</strong>
-        <p>Receive your tailored resume as PDF and Word, or a full
-           interview prep kit with round-specific questions and answers.</p>
-      </li>
-    </ol>
-  </section>
-
-  <!-- ── PRICING ────────────────────────────────────────────── -->
-  <section class="container">
-    <h2>Pricing</h2>
-    <div class="pricing">
-      <div class="amount">₹{{ "{:,}".format(price_inr) }}</div>
-      <p class="label">60-day access · one-time payment</p>
-      <p style="font-size:14px;color:#475569;margin:0 0 14px">
-        Full access to resume builder, interview prep, and more.
+  <!-- ── HERO ────────────────────────────────────────────────── -->
+  <section class="hero" style="border-top:none">
+    <div class="container">
+      <span class="vima-logo hero-wordmark">Vima</span>
+      <h1>Executive career coaching, powered by AI.</h1>
+      <p class="hero-sub">
+        Vima builds tailored resumes and interview prep for senior professionals
+        navigating job transitions at India's top companies — in minutes, not weeks.
       </p>
-      <ul>
-        <li>Unlimited tailored resumes (PDF + Word)</li>
-        <li>Round-specific interview prep kits</li>
-        <li>Mock interview sessions with feedback</li>
-        <li>Unlimited mentor chat</li>
-      </ul>
-      <a class="cta" href="/login">Get started free</a>
+      <div>
+        <a href="/login" class="cta-primary">Start with your resume →</a>
+        <a href="#how-it-works" class="cta-secondary">See how it works ↓</a>
+      </div>
+      <p class="stat-bar">
+        Applications per open role in India have more than doubled since 2022.
+        Your resume needs to work harder than ever.
+        <cite> — LinkedIn India Talent Insights</cite>
+      </p>
     </div>
   </section>
 
-  <!-- ── FOOTER ─────────────────────────────────────────────── -->
+  <!-- ── SOCIAL PROOF ─────────────────────────────────────────── -->
+  <section>
+    <div class="container">
+      <p class="section-label">Early access stories</p>
+      <h2 class="section-heading">Built for transitions that matter.</h2>
+      <div class="proof-grid">
+        <div class="proof-card">
+          <p>VP at a leading BFSI firm targeting a Director role at a fintech startup — resume tailored to the JD and hiring manager's background, delivered in 9 minutes.</p>
+        </div>
+        <div class="proof-card">
+          <p>Senior Manager at an IT services company preparing for a Product Director interview at a US MNC — personalised mock questions based on the actual JD and interviewer's LinkedIn background.</p>
+        </div>
+        <div class="proof-card">
+          <p>15-year corporate professional negotiating a CTC jump — Vima's offer strategy framed around market benchmarks and the company's funding stage.</p>
+        </div>
+      </div>
+      <p class="proof-note">Real names and outcomes coming soon — currently in early access.</p>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ─────────────────────────────────────────── -->
+  <section id="how-it-works">
+    <div class="container">
+      <p class="section-label">The process</p>
+      <h2 class="section-heading">Three steps. Nine minutes.</h2>
+      <ol class="steps">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Sign in with Google — no forms, no CV uploads to broken portals.</strong>
+            <p>You're talking to Vima in 10 seconds.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Share your context — your resume, the role you're targeting, who you think the hiring manager is.</strong>
+            <p>Vima reads everything and researches the rest.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Get your output — a tailored resume with a strategy note explaining every positioning choice.</strong>
+            <p>Or a personalised interview prep kit with questions built around your actual experience.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ── PRICING ───────────────────────────────────────────────── -->
+  <section>
+    <div class="container">
+      <p class="section-label">Pricing</p>
+      <div class="pricing-box">
+        <div class="pricing-amount">₹{{ "{:,}".format(price_inr) }}</div>
+        <div class="pricing-period">60-day full access · one-time payment</div>
+        <p class="pricing-desc">
+          Resume builder, interview prep, offer negotiation strategy, and first 90 days planning — everything you need for a successful transition.
+        </p>
+        <a href="/login" class="cta-primary">Get started →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FAQ ──────────────────────────────────────────────────── -->
+  <section>
+    <div class="container">
+      <p class="section-label">FAQ</p>
+      <h2 class="section-heading">Common questions.</h2>
+      <div class="faq-list">
+        <details>
+          <summary>How is Vima different from ChatGPT or LinkedIn AI?</summary>
+          <div class="faq-answer">
+            Generic AI gives generic resumes. Vima learns your specific situation — your role, the exact JD, the company, and who the hiring manager is — then builds something that couldn't have been written for anyone else. It's the difference between a template and a tailored suit.
+          </div>
+        </details>
+        <details>
+          <summary>Is Vima better than a professional resume writer?</summary>
+          <div class="faq-answer">
+            A good resume writer takes two weeks and ₹5,000–₹15,000. Vima does what they do — mapping your experience to the JD, researching the hiring manager, explaining the strategy — in 9 minutes. And you can iterate instantly.
+          </div>
+        </details>
+        <details>
+          <summary>What level of professional is Vima designed for?</summary>
+          <div class="faq-answer">
+            Senior professionals — Managers, Senior Managers, Directors, VPs, and above — at Indian and global companies. If the competition is intense and the stakes are high, Vima is built for you.
+          </div>
+        </details>
+        <details>
+          <summary>Does Vima work across industries?</summary>
+          <div class="faq-answer">
+            Yes — BFSI, IT services, consulting, FMCG, pharma, manufacturing, startups. Vima understands Indian corporate context: CTC structures, notice periods, reporting hierarchies, and what hiring managers in each sector look for.
+          </div>
+        </details>
+        <details>
+          <summary>Is my resume data safe?</summary>
+          <div class="faq-answer">
+            Your documents are encrypted and stored securely on Indian servers. Vima uses your information only to generate your outputs — never shared, never sold. You can request deletion at any time.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ────────────────────────────────────────────────── -->
   <footer class="container">
-    <span class="copyright">© ViMa</span>
-    <span><a href="/privacy">Privacy Policy</a></span>
+    <span class="footer-copy">© 2026 Vima. Built for senior professionals navigating India's job market.</span>
+    <div class="footer-links">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms</a>
+      <a href="mailto:support@vima.coach">Contact</a>
+    </div>
   </footer>
 
 </body>
