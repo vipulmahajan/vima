@@ -411,8 +411,7 @@ async def _handle_resume_web_doc(
         await merge_user_state_data(user_id, {"resume_sources": sources})
         kind_label = "LinkedIn PDF" if kind == "linkedin_pdf" else "resume"
         return _text_reply(user_id,
-            f"Got your {kind_label}. Send another version, paste your "
-            "LinkedIn profile URL, or type *done* when you're finished."
+            f"Got your {kind_label}. Send another version or type *done* when you're finished."
         )
 
     if step == resume_flow.RESUME_Q3:
@@ -423,10 +422,8 @@ async def _handle_resume_web_doc(
             )
         await merge_user_state_data(user_id, {"jd_source": "file", "jd_text": extracted_text})
         await upsert_user_state(user_id, {"resume_step": resume_flow.RESUME_Q4})
-        return _text_reply(user_id,
-            "Got the JD. One more thing — do you have the hiring manager's "
-            "LinkedIn URL? (Type *skip* if not.)"
-        )
+        from flows.resume import _q4_body
+        return _text_reply(user_id, _q4_body())
 
     # Shouldn't reach here, but be safe.
     return _text_reply(user_id, "Received your file.")

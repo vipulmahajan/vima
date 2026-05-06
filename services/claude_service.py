@@ -239,8 +239,13 @@ class ClaudeService:
         self,
         profile: dict[str, Any],
         sender_phone: Optional[str] = None,
+        hm_research: Optional[str] = None,
     ) -> str:
         """Ask the single best clarifying question for a resume rewrite."""
+        hm_block = (
+            f"\n\nHiring manager research:\n{hm_research}"
+            if hm_research else ""
+        )
         try:
             response = await self._create_with_retry(
                 sender_phone=sender_phone,
@@ -258,10 +263,21 @@ class ClaudeService:
                     {
                         "role": "user",
                         "content": (
-                            "Based on this candidate profile, ask ONE focused "
-                            "clarifying question (under 25 words) that would most "
-                            "strengthen their resume rewrite. Plain text only.\n\n"
+                            "Generate ONE specific clarifying question (under 30 words, "
+                            "plain text only) that would most strengthen this candidate's "
+                            "resume rewrite for the target role.\n\n"
+                            "Rules:\n"
+                            "- If hiring manager background is available, prioritise asking "
+                            "  about something that directly aligns with their known focus "
+                            "  areas or career background.\n"
+                            "- If the JD emphasises specific technical skills or leadership "
+                            "  dimensions, ask for a concrete example in that exact dimension "
+                            "  with a quantified outcome.\n"
+                            "- Avoid generic questions like 'what's your biggest achievement' "
+                            "  — make it specific to the role and hiring manager.\n"
+                            "- Output the question only. No preamble.\n\n"
                             f"Profile JSON:\n{json.dumps(profile, default=str)[:8000]}"
+                            f"{hm_block}"
                         ),
                     }
                 ],
@@ -290,6 +306,7 @@ class ClaudeService:
         q6_question:         Optional[str]      = None,
         q6_answer:           Optional[str]      = None,
         company_research:    Optional[dict[str, Any]] = None,
+        hm_research:         Optional[str]      = None,
         edit_instruction:    Optional[str]      = None,
     ) -> dict[str, Any]:
         """Generate a tailored resume as a structured dict.
@@ -326,6 +343,7 @@ class ClaudeService:
             q6_question=q6_question,
             q6_answer=q6_answer,
             company_research=company_research,
+            hm_research=hm_research,
             edit_instruction=edit_instruction,
         )
 
@@ -372,6 +390,7 @@ class ClaudeService:
         hiring_manager: Optional[dict[str, Any]] = None,
         superpower:   Optional[str]             = None,
         company_research: Optional[dict[str, Any]] = None,
+        hm_research:  Optional[str]             = None,
     ) -> str:
         """Return a short paragraph (2-4 sentences) explaining positioning choices.
 
@@ -381,6 +400,10 @@ class ClaudeService:
           - What was de-prioritised or trimmed and why
           - Any hiring-manager / company signal that shaped the framing
         """
+        hm_research_line = (
+            f"Hiring manager research summary: {hm_research}\n"
+            if hm_research else ""
+        )
         prompt = (
             "You just generated the resume below for this candidate. Now write "
             "a *strategy note* the candidate will read in WhatsApp before "
@@ -391,11 +414,14 @@ class ClaudeService:
             "- Explain WHY you made the top 1-3 positioning choices (lead-in, "
             "  keyword emphasis, what you trimmed). Tie each choice to the JD, "
             "  the hiring manager, the company, or the candidate's superpower.\n"
+            "- If hiring manager research was used, briefly note how it shaped "
+            "  the framing.\n"
             "- Sound like a senior friend, not a marketer. No hype words.\n"
             "- Output only the paragraph — no preamble, no headings.\n\n"
             f"Target role: {current_role_target or '(unspecified)'}\n"
             f"Candidate's superpower: {superpower or '(not given)'}\n"
             f"Hiring manager: {json.dumps(hiring_manager) if hiring_manager else '(skipped)'}\n"
+            f"{hm_research_line}"
             f"Company research keys: "
             f"{list((company_research or {}).keys())}\n\n"
             f"JD excerpt:\n{(jd_text or '')[:2500]}\n\n"
@@ -638,6 +664,16 @@ def _build_resume_user_payload(**fields: Any) -> str:
             "",
             "── HIRING MANAGER ─────────────────────────",
             json.dumps(hm, ensure_ascii=False),
+        ]
+
+    if fields.get("hm_research"):
+        sections += [
+            "",
+            "── HIRING MANAGER RESEARCH ─────────────────",
+            fields["hm_research"],
+            "(Use this to identify what the hiring manager likely prioritises "
+            "and tailor the resume summary, skills order, and bullet emphasis "
+            "to resonate with their known background and focus areas.)",
         ]
 
     if cr:
