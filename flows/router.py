@@ -57,6 +57,12 @@ STATE_INTERVIEW = "interview"
 # Text the user can send at any point to reset / see the menu.
 RESET_TRIGGERS = {"menu", "hi", "hello", "start", "start over", "reset", "help", "/start"}
 
+# Keywords a user might type after completing payment via a direct link.
+_PAYMENT_CONFIRM_KEYWORDS = {
+    "paid", "payment done", "done", "completed", "i paid",
+    "payment complete", "transferred", "payment made",
+}
+
 
 # ── Web entry point ──────────────────────────────────────────────────────────
 
@@ -103,13 +109,78 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
             await _deliver(user_id, reply)
         return
 
-    # Hard reset / menu.
-    if t.lower() in RESET_TRIGGERS:
+    # Payment confirmation — user typing "paid" etc. while in AWAITING_PAYMENT.
+    t_lower = t.lower().strip()
+    if current in (STATE_RESUME, STATE_INTERVIEW) and t_lower in _PAYMENT_CONFIRM_KEYWORDS:
+        step_key = "resume_step" if current == STATE_RESUME else "interview_step"
+        step_val = state.get(step_key, "")
+        if step_val == "awaiting_payment":
+            from models.database import has_active_subscription
+            is_paid = await has_active_subscription(user_id)
+            if is_paid:
+                await _deliver(user_id, _text_reply(
+                    user_id, "Payment confirmed! Give me a moment..."
+                ))
+                # Re-enter the flow; the AWAITING_PAYMENT handler will detect
+                # the active subscription and advance to generation.
+                if current == STATE_RESUME:
+                    reply = await resume_flow.handle(user_id, message, state)
+                else:
+                    reply = await interview_flow.handle(user_id, message, state)
+                await _deliver(user_id, reply)
+            else:
+                await _deliver(user_id, _text_reply(
+                    user_id,
+                    "I haven't seen your payment come through yet — it can take "
+                    "a minute. If you've paid, try again in 30 seconds. "
+                    "If you need help, reply *support*."
+                ))
+            return
+
+    # Menu / reset — but preserve in-progress work instead of wiping state.
+    if t_lower in RESET_TRIGGERS:
+        _TERMINAL_STEPS = {"delivered", "welcome", ""}
+        in_progress = (
+            current not in (STATE_IDLE, "")
+            and state.get(
+                "resume_step" if current == STATE_RESUME else "interview_step", ""
+            ) not in _TERMINAL_STEPS
+        )
+        if in_progress:
+            data = state.get("data") or {}
+            role_hint = (data.get("current_role_target") or "").strip()
+            role_text = f" for *{role_hint}*" if role_hint else ""
+            flow_label = "resume" if current == STATE_RESUME else "interview prep"
+            name_part  = f", {first_name}" if first_name else ""
+            await merge_user_state_data(user_id, {"awaiting_resume_confirm": True})
+            await _deliver(user_id, _text_reply(user_id,
+                f"Welcome back{name_part}! I have your details saved — you were "
+                f"working on a *{flow_label}*{role_text}. "
+                "Want to pick up where you left off?\n\n"
+                "Reply *continue* to resume, or *new* to start fresh."
+            ))
+            return
         await upsert_user_state(user_id, {"flow": STATE_IDLE})
         await merge_user_state_data(user_id, {"awaiting_stage": True})
         reply = _menu_reply(user_id, first_name=first_name)
         await _deliver(user_id, reply)
         return
+
+    # Handle continue / new replies from the in-progress prompt above.
+    if (state.get("data") or {}).get("awaiting_resume_confirm"):
+        if t_lower == "continue":
+            await merge_user_state_data(user_id, {"awaiting_resume_confirm": False})
+            if current == STATE_RESUME:
+                reply = await resume_flow.handle(user_id, message, state)
+            else:
+                reply = await interview_flow.handle(user_id, message, state)
+            await _deliver(user_id, reply)
+            return
+        if t_lower == "new":
+            await upsert_user_state(user_id, {"flow": STATE_IDLE})
+            await merge_user_state_data(user_id, {"awaiting_stage": True, "awaiting_resume_confirm": False})
+            await _deliver(user_id, _menu_reply(user_id, first_name=first_name))
+            return
 
     intent = _detect_intent(t)
 

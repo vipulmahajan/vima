@@ -1268,6 +1268,7 @@ function vimaChat() {
         <div class="pay-sub">60-day full access · ₹${amtInr.toLocaleString('en-IN')}</div>
         <button class="pay-btn" id="${btnId}">Pay Now</button>
         <div class="pay-error" id="${errId}"></div>
+        ${msg.direct_link ? '<div style="margin-top:8px;font-size:12px;color:#888;text-align:center;">After payment, return to this tab and type <strong>paid</strong> to continue.</div>' : ''}
       `;
 
       row.appendChild(sender);
