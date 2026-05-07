@@ -82,6 +82,27 @@ def _is_continuation_intent(text: str) -> bool:
     return any(word in t for word in _CONTINUATION_SUBSTRINGS)
 
 
+import re as _re
+
+
+def _extract_target_role(raw: str) -> str:
+    """Extract just the target role name from a raw Q1 answer."""
+    patterns = [
+        r"targeting\s+([A-Z][^.,\n]{2,40})",
+        r"target\s+(?:role\s+(?:is|of)\s+)?([A-Z][^.,\n]{2,40})",
+        r"applying\s+for\s+(?:the\s+)?([A-Z][^.,\n]{2,40})",
+        r"want\s+to\s+be\s+(?:a\s+|an\s+)?([A-Z][^.,\n]{2,40})",
+        r"want\s+(?:a\s+)?(?:the\s+)?role\s+of\s+([A-Z][^.,\n]{2,40})",
+        r"aiming\s+for\s+(?:a\s+|an\s+|the\s+)?([A-Z][^.,\n]{2,40})",
+        r"(?:transitioning|moving)\s+to\s+(?:a\s+|an\s+|the\s+)?([A-Z][^.,\n]{2,40})",
+    ]
+    for pat in patterns:
+        m = _re.search(pat, raw, _re.IGNORECASE)
+        if m:
+            return m.group(1).strip().rstrip(".,;")
+    return raw[:40] + "…" if len(raw) > 40 else raw
+
+
 def _returning_user_reply(
     to: str,
     *,
@@ -90,7 +111,8 @@ def _returning_user_reply(
 ) -> dict[str, Any]:
     """4-option prompt shown to returning users who have saved context."""
     data = data or {}
-    role = (data.get("current_role_target") or "").strip()
+    raw_role = (data.get("current_role_target") or "").strip()
+    role = _extract_target_role(raw_role) if raw_role else ""
     has_sources = bool(data.get("resume_sources"))
 
     if role:
@@ -187,6 +209,22 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
 
     data = state.get("data") or {}
 
+    # ── Mid-flow guard ───────────────────────────────────────────────────────
+    # If the user is actively mid-flow, bypass ALL other checks (returning-user
+    # detection, reset triggers, stage parsing) and route directly to the flow
+    # handler. This prevents the returning-user / continuation prompts from
+    # intercepting messages that belong to the active state machine.
+    _RESUME_TERMINAL    = {"", "welcome", "delivered"}
+    _INTERVIEW_TERMINAL = {"", "welcome", "delivered", "prep_delivered"}
+    if current == STATE_RESUME and state.get("resume_step", "") not in _RESUME_TERMINAL:
+        reply = await resume_flow.handle(user_id, message, state)
+        await _deliver(user_id, reply)
+        return
+    if current == STATE_INTERVIEW and state.get("interview_step", "") not in _INTERVIEW_TERMINAL:
+        reply = await interview_flow.handle(user_id, message, state)
+        await _deliver(user_id, reply)
+        return
+
     # Handle replies to the returning-user 4-option prompt.
     if data.get("awaiting_returning_choice"):
         # Check for artifact resend keywords before numbered options.
@@ -257,6 +295,16 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
                 "jd_text": None,
             })
             await _deliver(user_id, _menu_reply(user_id, first_name=first_name))
+            return
+        # Document or voice upload while awaiting confirmation — treat as "continue"
+        # and route to the flow handler (user is uploading their resume/JD).
+        if message["type"] in {"document", "audio"}:
+            await merge_user_state_data(user_id, {"awaiting_resume_confirm": False})
+            if current == STATE_RESUME:
+                reply = await resume_flow.handle(user_id, message, state)
+            else:
+                reply = await interview_flow.handle(user_id, message, state)
+            await _deliver(user_id, reply)
             return
 
     # Menu / reset — but preserve in-progress work instead of wiping state.
@@ -392,6 +440,15 @@ async def route_web_document(
     state   = await get_user_state(user_id)
     current = state.get("flow", STATE_IDLE)
     step    = state.get("resume_step") or state.get("interview_step") or ""
+    data    = state.get("data") or {}
+
+    # If user uploads a doc while the continue/new prompt is showing, treat
+    # as "continue" and route to the Q2 (resume upload) handler.
+    if data.get("awaiting_resume_confirm") and current == STATE_RESUME:
+        await merge_user_state_data(user_id, {"awaiting_resume_confirm": False})
+        await upsert_user_state(user_id, {"resume_step": resume_flow.RESUME_Q2})
+        state = await get_user_state(user_id)
+        step  = resume_flow.RESUME_Q2
 
     # Steps that accept a document upload directly.
     DOC_STEPS = {
