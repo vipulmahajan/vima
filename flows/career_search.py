@@ -358,7 +358,10 @@ async def _deliver_target_roles(
             log.warning("career_search: target_role event push failed: %s", exc)
             # Fallback to text.
             await messenger.send(_text(sender, _format_roles_text(roles)))
-        return None
+        return _text(sender,
+            "Your target role options are above — tap one to confirm your target, "
+            "or describe any adjustments."
+        )
 
     # WhatsApp — plain text.
     return _text(sender, _format_roles_text(roles))

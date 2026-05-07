@@ -105,6 +105,19 @@ def _extract_target_role(raw: str) -> str:
     return raw[:40] + "…" if len(raw) > 40 else raw
 
 
+_VAGUE_ROLE_WORDS = {
+    "exploring", "not sure", "unsure", "thinking", "looking", "options",
+    "open", "flexible", "undecided", "unclear", "various", "anything",
+}
+
+
+def _is_vague_role(role: str) -> bool:
+    """True if the extracted role string is too vague to display."""
+    if len(role) < 6:
+        return True
+    return role.lower().strip() in _VAGUE_ROLE_WORDS
+
+
 def _returning_user_reply(
     to: str,
     *,
@@ -113,8 +126,21 @@ def _returning_user_reply(
 ) -> dict[str, Any]:
     """4-option prompt shown to returning users who have saved context."""
     data = data or {}
+
+    # Primary source: current_role_target (set by resume flow Q1 or career search COMPLETE).
     raw_role = (data.get("current_role_target") or "").strip()
     role = _extract_target_role(raw_role) if raw_role else ""
+    if _is_vague_role(role):
+        role = ""
+
+    # Fallback: career_profile.initial_target (set by career search Q5).
+    if not role:
+        cp_target = (data.get("career_profile") or {}).get("initial_target") or ""
+        if cp_target:
+            candidate = _extract_target_role(cp_target.strip())
+            if not _is_vague_role(candidate):
+                role = candidate
+
     has_sources = bool(data.get("resume_sources"))
 
     if role:
@@ -741,9 +767,9 @@ def _welcome_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
     text = (
         f"{greeting} I'm *Vima* — your senior career coach.\n\n"
         "Where are you in your career transition?\n\n"
-        "*1.* Building a tailored resume\n"
-        "*2.* Preparing for interviews\n"
-        "*3.* Searching for roles — get clear on your target\n\n"
+        "*1.* Searching for roles — get clear on your target\n"
+        "*2.* Building a tailored resume\n"
+        "*3.* Preparing for interviews\n\n"
         "More coming soon — offer negotiation and first 90 days planning."
     )
     return _text_reply(to, text)
@@ -753,9 +779,9 @@ def _menu_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
     greeting = f"Hey {first_name}," if first_name else "Hey,"
     text = (
         f"{greeting} where are you in your career transition?\n\n"
-        "*1.* Building a tailored resume\n"
-        "*2.* Preparing for interviews\n"
-        "*3.* Searching for roles — get clear on your target\n\n"
+        "*1.* Searching for roles — get clear on your target\n"
+        "*2.* Building a tailored resume\n"
+        "*3.* Preparing for interviews\n\n"
         "More coming soon — offer negotiation and first 90 days planning."
     )
     return _text_reply(to, text)
@@ -799,23 +825,23 @@ STAGE_NEGOTIATION = "negotiation"
 STAGE_FIRST_90    = "first_90_days"
 
 _STAGE_KEYWORDS: dict[str, str] = {
-    "1": STAGE_RESUME,
-    "resume": STAGE_RESUME,
-    "cv": STAGE_RESUME,
-    "custom resume": STAGE_RESUME,
-
-    "2": STAGE_INTERVIEW,
-    "interview": STAGE_INTERVIEW,
-    "preparing for interview": STAGE_INTERVIEW,
-    "prep": STAGE_INTERVIEW,
-
-    "3": STAGE_SEARCHING,
+    "1": STAGE_SEARCHING,
     "search": STAGE_SEARCHING,
     "searching": STAGE_SEARCHING,
     "job search": STAGE_SEARCHING,
     "looking": STAGE_SEARCHING,
     "career search": STAGE_SEARCHING,
     "find a job": STAGE_SEARCHING,
+
+    "2": STAGE_RESUME,
+    "resume": STAGE_RESUME,
+    "cv": STAGE_RESUME,
+    "custom resume": STAGE_RESUME,
+
+    "3": STAGE_INTERVIEW,
+    "interview": STAGE_INTERVIEW,
+    "preparing for interview": STAGE_INTERVIEW,
+    "prep": STAGE_INTERVIEW,
 
     "negotiation": STAGE_NEGOTIATION,
     "negotiating": STAGE_NEGOTIATION,
