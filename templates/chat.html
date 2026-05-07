@@ -1580,19 +1580,31 @@ function vimaChat() {
         confirmBtn.className = 'role-confirm-btn';
         confirmBtn.textContent = 'This is my target';
         confirmBtn.addEventListener('click', () => {
-          this.inputText = lbl;
-          this.$nextTick(() => this.sendMessage());
+          if (!this.wsConnected) return;
+          // Disable all buttons on this card set to prevent double-send.
+          wrap.querySelectorAll('button').forEach(b => { b.disabled = true; });
+          confirmBtn.textContent = 'Confirmed ✓';
+          this.hideQuickReplies();
+          this.appendUser(lbl);
+          this._ws.send(JSON.stringify({ type: 'message', text: lbl }));
         });
 
         const adjustBtn = document.createElement('button');
         adjustBtn.className = 'role-adjust-btn';
         adjustBtn.textContent = 'Adjust this';
         adjustBtn.addEventListener('click', () => {
-          this.inputText = `I'd like to adjust option ${lbl}: `;
-          this.$nextTick(() => {
-            const el = this.$refs.inputEl;
-            if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
-          });
+          const prefill = `I'd like to adjust option ${lbl}: `;
+          // Set Alpine reactive state so the send button enables.
+          this.inputText = prefill;
+          // Also set DOM value directly — Alpine re-render is async.
+          const ta = document.querySelector('textarea[x-model="inputText"]');
+          if (ta) {
+            ta.value = prefill;
+            ta.focus();
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+          }
+          adjustBtn.textContent = 'Type your adjustment above ↑';
+          adjustBtn.disabled = true;
         });
 
         actions.appendChild(confirmBtn);
