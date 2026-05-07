@@ -179,6 +179,20 @@ class WebMessenger(Messenger):
             "ts":          time.time(),
         })
 
+    # send_target_roles ─────────────────────────────────────────────────────
+
+    async def send_target_roles(
+        self,
+        user_id: str,
+        roles: list[dict],
+    ) -> None:
+        """Push a target_role card event; the frontend renders structured cards."""
+        await self._push(user_id, {
+            "type":  "target_role",
+            "roles": roles,
+            "ts":    time.time(),
+        })
+
     # send_quick_replies ────────────────────────────────────────────────────
 
     async def send_quick_replies(

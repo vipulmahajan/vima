@@ -449,28 +449,35 @@
       flex-direction: column;
       gap: 12px;
       max-width: 340px;
+      min-height: 100px;
     }
     .role-card {
-      background: #FFFDF8;
-      border: 1.5px solid var(--border);
-      border-radius: 14px;
-      padding: 16px 16px 14px;
+      display: block;
+      background: #ffffff;
+      border: 1px solid #E5DDD0;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 8px 0;
+      min-height: 100px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      visibility: visible;
     }
     .role-card-header {
       display: flex;
       align-items: baseline;
       gap: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
     .role-label {
+      display: inline-block;
       font-family: "Fraunces", Georgia, serif;
       font-size: 18px;
       font-weight: 700;
       color: var(--accent);
-      min-width: 20px;
+      min-width: 22px;
     }
     .role-title {
+      display: inline;
       font-family: "Fraunces", Georgia, serif;
       font-size: 15px;
       font-weight: 600;
@@ -478,6 +485,7 @@
       line-height: 1.3;
     }
     .role-why {
+      display: block;
       font-size: 13px;
       color: var(--primary);
       line-height: 1.5;
@@ -491,6 +499,7 @@
       align-items: center;
     }
     .role-stretch-badge {
+      display: inline-block;
       font-size: 11px;
       font-weight: 700;
       color: #fff;
@@ -499,19 +508,22 @@
       letter-spacing: 0.3px;
     }
     .role-timeline {
+      display: inline-block;
       font-size: 12px;
       color: var(--muted);
     }
     .role-companies {
+      display: block;
       font-size: 12.5px;
       color: var(--muted);
       margin: 0 0 4px 0;
     }
     .role-ctc {
+      display: block;
       font-size: 12.5px;
       font-weight: 600;
       color: var(--primary);
-      margin: 0 0 12px 0;
+      margin: 0 0 14px 0;
     }
     .role-card-actions {
       display: flex;
@@ -519,17 +531,31 @@
       flex-wrap: wrap;
     }
     .role-confirm-btn {
+      display: inline-block;
+      font-family: "Inter", sans-serif;
       font-size: 13px;
+      font-weight: 600;
       padding: 8px 14px;
       border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: background 0.12s;
     }
+    .role-confirm-btn:hover { background: #A3741A; }
     .role-adjust-btn {
+      display: inline-block;
+      font-family: "Inter", sans-serif;
       font-size: 13px;
+      font-weight: 500;
       padding: 8px 14px;
       border-radius: 8px;
       background: transparent;
       border: 1.5px solid var(--border);
       color: var(--primary);
+      cursor: pointer;
+      transition: background 0.12s;
     }
     .role-adjust-btn:hover { background: #f5ede0; }
 
@@ -1174,6 +1200,7 @@ function vimaChat() {
 
     // ── Inbound event dispatch ─────────────────────────────────────
     handleEvent(msg) {
+      console.log('[Vima] received event:', msg.type, msg);
       switch (msg.type) {
         case 'text':
           this.removeTyping();
@@ -1200,7 +1227,9 @@ function vimaChat() {
           break;
         case 'target_role':
           this.removeTyping();
-          this.appendTargetRoleCards(msg.roles || []);
+          this.appendTargetRoleCards(
+            msg.roles || (msg.data && msg.data.roles) || (msg.payload && msg.payload.roles) || []
+          );
           this._refreshState();
           break;
         case 'error':
@@ -1464,11 +1493,18 @@ function vimaChat() {
 
     // ── Target role cards ────────────────────────────────────────────
     appendTargetRoleCards(roles) {
-      if (!roles || !roles.length) return;
+      // Tolerate msg.roles / msg.data.roles / msg.payload.roles shapes.
+      if (!roles || !Array.isArray(roles) || roles.length === 0) {
+        console.warn('[Vima] appendTargetRoleCards: no roles to render');
+        return;
+      }
+
       const row = this._makeRow('vima');
-      const sender = document.createElement('div');
-      sender.className = 'msg-sender';
-      sender.textContent = 'Vima';
+
+      const senderEl = document.createElement('div');
+      senderEl.className = 'msg-sender';
+      senderEl.textContent = 'Vima';
+      row.appendChild(senderEl);
 
       const wrap = document.createElement('div');
       wrap.className = 'target-role-cards';
@@ -1477,24 +1513,24 @@ function vimaChat() {
       const stretchColor = { LOW: '#2d7a3a', MEDIUM: '#b85c00', HIGH: '#b81f1f' };
 
       roles.slice(0, 3).forEach((role, i) => {
+        const lbl = labels[i] || String(i + 1);
         const card = document.createElement('div');
         card.className = 'role-card';
 
+        // Header: label + title
         const header = document.createElement('div');
         header.className = 'role-card-header';
-
-        const label = document.createElement('span');
-        label.className = 'role-label';
-        label.textContent = labels[i] || String(i + 1);
-
-        const title = document.createElement('span');
-        title.className = 'role-title';
-        title.textContent = role.title + (role.sector ? ` — ${role.sector}` : '');
-
-        header.appendChild(label);
-        header.appendChild(title);
+        const labelEl = document.createElement('span');
+        labelEl.className = 'role-label';
+        labelEl.textContent = lbl;
+        const titleEl = document.createElement('span');
+        titleEl.className = 'role-title';
+        titleEl.textContent = (role.title || '') + (role.sector ? ` — ${role.sector}` : '');
+        header.appendChild(labelEl);
+        header.appendChild(titleEl);
         card.appendChild(header);
 
+        // Why it fits
         if (role.why_fits) {
           const why = document.createElement('p');
           why.className = 'role-why';
@@ -1502,6 +1538,7 @@ function vimaChat() {
           card.appendChild(why);
         }
 
+        // Meta: stretch badge + timeline
         const meta = document.createElement('div');
         meta.className = 'role-meta';
         if (role.stretch) {
@@ -1517,15 +1554,17 @@ function vimaChat() {
           tl.textContent = role.timeline;
           meta.appendChild(tl);
         }
-        card.appendChild(meta);
+        if (meta.children.length) card.appendChild(meta);
 
+        // Company archetypes
         if (role.company_archetypes) {
           const co = document.createElement('p');
           co.className = 'role-companies';
-          co.textContent = '🏢 ' + role.company_archetypes;
+          co.textContent = role.company_archetypes;
           card.appendChild(co);
         }
 
+        // CTC range
         if (role.ctc_range) {
           const ctc = document.createElement('p');
           ctc.className = 'role-ctc';
@@ -1533,23 +1572,28 @@ function vimaChat() {
           card.appendChild(ctc);
         }
 
+        // Buttons
         const actions = document.createElement('div');
         actions.className = 'role-card-actions';
 
         const confirmBtn = document.createElement('button');
-        confirmBtn.className = 'btn btn-primary role-confirm-btn';
+        confirmBtn.className = 'role-confirm-btn';
         confirmBtn.textContent = 'This is my target';
-        confirmBtn.onclick = () => {
-          this.inputText = labels[i] || String(i + 1);
-          this.sendMessage();
-        };
+        confirmBtn.addEventListener('click', () => {
+          this.inputText = lbl;
+          this.$nextTick(() => this.sendMessage());
+        });
 
         const adjustBtn = document.createElement('button');
-        adjustBtn.className = 'btn btn-outline role-adjust-btn';
+        adjustBtn.className = 'role-adjust-btn';
         adjustBtn.textContent = 'Adjust this';
-        adjustBtn.onclick = () => {
-          this.$refs.inputEl && this.$refs.inputEl.focus();
-        };
+        adjustBtn.addEventListener('click', () => {
+          this.inputText = `I'd like to adjust option ${lbl}: `;
+          this.$nextTick(() => {
+            const el = this.$refs.inputEl;
+            if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+          });
+        });
 
         actions.appendChild(confirmBtn);
         actions.appendChild(adjustBtn);
@@ -1558,7 +1602,6 @@ function vimaChat() {
         wrap.appendChild(card);
       });
 
-      row.appendChild(sender);
       row.appendChild(wrap);
       this._mount(row);
     },

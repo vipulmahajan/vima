@@ -140,6 +140,26 @@ class Messenger(ABC):
             )
             return
 
+        if msg_type == "target_role":
+            roles = reply.get("roles") or []
+            if hasattr(self, "send_target_roles"):
+                await self.send_target_roles(to, roles)
+            else:
+                # WhatsApp / unknown channel — format as plain text.
+                lines = ["Here are your target role options:\n"]
+                labels = ["A", "B", "C"]
+                for i, r in enumerate(roles[:3]):
+                    label = labels[i] if i < len(labels) else str(i + 1)
+                    title = r.get("title", "")
+                    sector = r.get("sector", "")
+                    lines.append(f"*{label}. {title}" + (f" — {sector}" if sector else "") + "*")
+                    if r.get("why_fits"):
+                        lines.append(r["why_fits"])
+                    lines.append("")
+                lines.append("Reply *A*, *B*, or *C* to confirm your target.")
+                await self.send_text(to, "\n".join(lines))
+            return
+
         # image and other types fall through as text for now.
         log.warning("send: unsupported reply.type=%s — falling back to text", msg_type)
         await self.send_text(to, reply.get("text") or "")
