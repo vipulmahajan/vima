@@ -552,6 +552,221 @@ class ClaudeService:
             return _interview_prep_fallback(company, target_role, round_label)
         return parsed
 
+    # ── Career Search functions ──────────────────────────────────────────────
+
+    async def generate_career_profile_summary(
+        self,
+        *,
+        career_profile: dict[str, Any],
+        sender_phone: Optional[str] = None,
+    ) -> str:
+        """Synthesise Q1-Q7 answers into a ~150-word Career Profile Summary paragraph.
+
+        The paragraph is read back to the user for confirmation before Vima
+        proceeds to target role generation. Warm, first-person, no hype words.
+        """
+        prompt = (
+            "You are Vima, a senior executive career coach. Based on the career profile "
+            "data below (collected across 7 questions), write a Career Profile Summary "
+            "paragraph of approximately 150 words.\n\n"
+            "Rules:\n"
+            "- Write in second person ('You've spent...', 'You're targeting...').\n"
+            "- Synthesise push/pull factors, current role, energising work, "
+            "  anti-patterns, initial target, constraints, and urgency naturally.\n"
+            "- Be specific — use the actual role, company, tenure, team size, and "
+            "  CTC details the user mentioned.\n"
+            "- Sound like a sharp friend reading back what they heard — warm but precise.\n"
+            "- End with: 'Does this capture it accurately? Anything to correct or add?'\n"
+            "- No emojis. No hype words. No bullet points — flowing prose only.\n"
+            "- Output the paragraph only. No preamble.\n\n"
+            f"Career profile data:\n{json.dumps(career_profile, default=str, indent=2)}"
+        )
+        response = await self._create_with_retry(
+            sender_phone=sender_phone,
+            purpose="career_profile_summary",
+            model=settings.claude_model,
+            max_tokens=400,
+            system=[{
+                "type": "text",
+                "text": self._persona,
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return _first_text(response).strip()
+
+    async def generate_target_roles(
+        self,
+        *,
+        career_profile: dict[str, Any],
+        sender_phone: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        """Generate 2-3 specific target role archetypes based on the Career Profile.
+
+        Returns a list of role dicts matching:
+          {
+            "title": str,
+            "sector": str,
+            "why_fits": str,         # 2-3 sentences tied to the user's actual profile
+            "stretch": "LOW" | "MEDIUM" | "HIGH",
+            "competition": str,      # e.g. "HIGH (many similar profiles)"
+            "timeline": str,         # e.g. "3–6 months typical"
+            "company_archetypes": str,
+            "ctc_range": str,        # e.g. "₹60–90L"
+            "confirmed": false
+          }
+        """
+        prompt = (
+            "You are Vima, a senior executive career coach. Based on the Career Profile "
+            "below, generate 2-3 specific target role archetypes for this person.\n\n"
+            "Rules:\n"
+            "- Each role must have a specific rationale tied to this user's actual "
+            "  experience — not generic suggestions.\n"
+            "- Include at least one 'safe' move (low stretch, high demand) and one "
+            "  'stretch' move (if the profile supports it).\n"
+            "- For company archetypes, be specific: name company types, not just "
+            "  'large companies'.\n"
+            "- CTC range must align with or slightly exceed the user's stated target.\n"
+            "- Indian market context throughout. No emojis.\n"
+            "- Output ONLY a valid JSON array. No prose, no fences. Start with [ end with ].\n\n"
+            "Each role object must have these exact keys:\n"
+            "  title, sector, why_fits, stretch (LOW/MEDIUM/HIGH), "
+            "competition, timeline, company_archetypes, ctc_range, confirmed (false)\n\n"
+            f"Career profile:\n{json.dumps(career_profile, default=str, indent=2)}"
+        )
+        response = await self._create_with_retry(
+            sender_phone=sender_phone,
+            purpose="generate_target_roles",
+            model=settings.claude_model,
+            max_tokens=2000,
+            system=[{
+                "type": "text",
+                "text": self._persona,
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = _first_text(response).strip()
+        try:
+            parsed = _safe_parse_json_array(raw)
+            if isinstance(parsed, list) and parsed:
+                return parsed
+        except Exception as exc:  # noqa: BLE001
+            log.warning("generate_target_roles: parse failed: %s", exc)
+        # Fallback: return a single role based on initial_target.
+        target = career_profile.get("initial_target") or "Senior Leadership Role"
+        return [{
+            "title": target,
+            "sector": "",
+            "why_fits": "Based on your experience and stated target.",
+            "stretch": "MEDIUM",
+            "competition": "—",
+            "timeline": "3–6 months typical",
+            "company_archetypes": "To be identified",
+            "ctc_range": career_profile.get("constraints", "Per your target"),
+            "confirmed": False,
+        }]
+
+    async def assess_gap(
+        self,
+        *,
+        career_profile: dict[str, Any],
+        target_role: str,
+        sender_phone: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Assess the gap between the user's profile and their stated target role.
+
+        Returns: {"size": "NONE" | "SMALL" | "LARGE", "rationale": str}
+
+        LARGE only fires when the gap is very significant (e.g., zero P&L experience
+        targeting CFO, first-time manager targeting Group CEO). Small mismatches
+        return SMALL or NONE — we do not challenge modest stretches.
+        """
+        prompt = (
+            "You are Vima, a senior executive career coach. Assess the gap between "
+            "this candidate's profile and their stated target role.\n\n"
+            "Gap size definitions:\n"
+            "  NONE  — natural next step; profile strongly supports the target.\n"
+            "  SMALL — modest stretch; manageable gap the market will accept.\n"
+            "  LARGE — significant gap that the market will notice and likely reject "
+            "           without a stepping-stone (e.g., zero P&L experience targeting CFO, "
+            "           first-time manager targeting Group CEO).\n\n"
+            "IMPORTANT: Only return LARGE for genuinely large gaps. Do not challenge "
+            "normal senior-to-leader transitions.\n\n"
+            "Output ONLY valid JSON: {\"size\": \"NONE\"|\"SMALL\"|\"LARGE\", "
+            "\"rationale\": \"one sentence explaining the gap\"}\n\n"
+            f"Target role: {target_role}\n\n"
+            f"Career profile:\n{json.dumps(career_profile, default=str, indent=2)}"
+        )
+        try:
+            response = await self._create_with_retry(
+                sender_phone=sender_phone,
+                purpose="assess_gap",
+                model=settings.claude_model,
+                max_tokens=200,
+                system=[{
+                    "type": "text",
+                    "text": self._persona,
+                    "cache_control": {"type": "ephemeral"},
+                }],
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = _first_text(response).strip()
+            parsed = _safe_parse_json(raw)
+            if parsed and "size" in parsed:
+                return parsed
+        except Exception as exc:  # noqa: BLE001
+            log.warning("assess_gap failed: %s", exc)
+        return {"size": "NONE", "rationale": ""}
+
+    async def generate_challenge_message(
+        self,
+        *,
+        career_profile: dict[str, Any],
+        target_role: str,
+        gap_rationale: str,
+        sender_phone: Optional[str] = None,
+    ) -> str:
+        """Generate an honest but warm challenge message for a LARGE gap.
+
+        Acknowledges the ambition, quantifies the gap specifically, offers an
+        alternative path, and always lets the user proceed with their original target.
+        """
+        prompt = (
+            "You are Vima, a senior executive career coach. The candidate has a "
+            "significant gap between their profile and their stated target role. "
+            "Write a challenge message following these rules exactly:\n\n"
+            "1. Acknowledge the ambition genuinely and without condescension.\n"
+            "2. Quantify the gap specifically — what does the market typically require "
+            "   that this candidate currently lacks?\n"
+            "3. Offer a concrete stepping-stone alternative with a realistic timeline.\n"
+            "4. End by saying they can still pursue the original target and you'll "
+            "   support whichever path they choose.\n\n"
+            "Tone: senior friend, not a recruiter. Honest, warm, specific.\n"
+            "Length: 4-6 sentences. No emojis. No hype words.\n"
+            "Output the message only. No preamble.\n\n"
+            f"Target role: {target_role}\n"
+            f"Gap rationale: {gap_rationale}\n\n"
+            f"Career profile:\n{json.dumps(career_profile, default=str, indent=2)}"
+        )
+        try:
+            response = await self._create_with_retry(
+                sender_phone=sender_phone,
+                purpose="challenge_message",
+                model=settings.claude_model,
+                max_tokens=300,
+                system=[{
+                    "type": "text",
+                    "text": self._persona,
+                    "cache_control": {"type": "ephemeral"},
+                }],
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return _first_text(response).strip()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("generate_challenge_message failed: %s", exc)
+            return ""
+
     # ── Compatibility shim: old callers ─────────────────────────────────────
 
     async def rewrite_resume(
@@ -814,6 +1029,54 @@ def _safe_parse_json(text: str) -> Optional[dict[str, Any]]:
                 snippet = candidate[start : i + 1]
                 try:
                     return json.loads(snippet)
+                except json.JSONDecodeError:
+                    return None
+    return None
+
+
+def _safe_parse_json_array(text: str) -> Optional[list[Any]]:
+    """Parse a JSON array from a model response, tolerating fences and extra prose."""
+    if not text:
+        return None
+    candidate = text.strip()
+    if candidate.startswith("```"):
+        candidate = re.sub(r"^```[a-zA-Z]*\s*", "", candidate)
+        candidate = re.sub(r"\s*```\s*$", "", candidate)
+    try:
+        result = json.loads(candidate)
+        if isinstance(result, list):
+            return result
+    except json.JSONDecodeError:
+        pass
+    start = candidate.find("[")
+    if start == -1:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(candidate)):
+        ch = candidate[i]
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                snippet = candidate[start : i + 1]
+                try:
+                    result = json.loads(snippet)
+                    if isinstance(result, list):
+                        return result
                 except json.JSONDecodeError:
                     return None
     return None

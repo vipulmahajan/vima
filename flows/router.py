@@ -45,14 +45,16 @@ from models.database import (
 )
 from flows import resume as resume_flow
 from flows import interview as interview_flow
+from flows import career_search as career_search_flow
 from services.claude_service import ClaudeService
 
 log = logging.getLogger(__name__)
 
 # ── Flow state constants ────────────────────────────────────────────────────
-STATE_IDLE      = "idle"
-STATE_RESUME    = "resume"
-STATE_INTERVIEW = "interview"
+STATE_IDLE          = "idle"
+STATE_RESUME        = "resume"
+STATE_INTERVIEW     = "interview"
+STATE_CAREER_SEARCH = "career_search"
 
 # Text the user can send at any point to reset / see the menu.
 RESET_TRIGGERS = {"menu", "hi", "hello", "start", "start over", "reset", "help", "/start"}
@@ -222,6 +224,11 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
         return
     if current == STATE_INTERVIEW and state.get("interview_step", "") not in _INTERVIEW_TERMINAL:
         reply = await interview_flow.handle(user_id, message, state)
+        await _deliver(user_id, reply)
+        return
+    if current == STATE_CAREER_SEARCH and \
+            state.get(career_search_flow._STEP_KEY, "") in career_search_flow.ACTIVE_STEPS:
+        reply = await career_search_flow.handle(user_id, message, state)
         await _deliver(user_id, reply)
         return
 
@@ -415,6 +422,11 @@ async def route_web_message(user_id: str, text: str, *, first_name: str = "") ->
 
     if current == STATE_INTERVIEW:
         reply = await interview_flow.handle(user_id, message, state)
+        await _deliver(user_id, reply)
+        return
+
+    if current == STATE_CAREER_SEARCH:
+        reply = await career_search_flow.handle(user_id, message, state)
         await _deliver(user_id, reply)
         return
 
@@ -730,8 +742,9 @@ def _welcome_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
         f"{greeting} I'm *Vima* — your senior career coach.\n\n"
         "Where are you in your career transition?\n\n"
         "*1.* Building a tailored resume\n"
-        "*2.* Preparing for interviews\n\n"
-        "More coming soon — offer negotiation, first 90 days, and job search strategy."
+        "*2.* Preparing for interviews\n"
+        "*3.* Searching for roles — get clear on your target\n\n"
+        "More coming soon — offer negotiation and first 90 days planning."
     )
     return _text_reply(to, text)
 
@@ -741,8 +754,9 @@ def _menu_reply(to: str, *, first_name: str = "") -> dict[str, Any]:
     text = (
         f"{greeting} where are you in your career transition?\n\n"
         "*1.* Building a tailored resume\n"
-        "*2.* Preparing for interviews\n\n"
-        "More coming soon — offer negotiation, first 90 days, and job search strategy."
+        "*2.* Preparing for interviews\n"
+        "*3.* Searching for roles — get clear on your target\n\n"
+        "More coming soon — offer negotiation and first 90 days planning."
     )
     return _text_reply(to, text)
 
@@ -795,11 +809,13 @@ _STAGE_KEYWORDS: dict[str, str] = {
     "preparing for interview": STAGE_INTERVIEW,
     "prep": STAGE_INTERVIEW,
 
-    # Keyword-only (not shown in menu — coming soon)
+    "3": STAGE_SEARCHING,
     "search": STAGE_SEARCHING,
     "searching": STAGE_SEARCHING,
     "job search": STAGE_SEARCHING,
     "looking": STAGE_SEARCHING,
+    "career search": STAGE_SEARCHING,
+    "find a job": STAGE_SEARCHING,
 
     "negotiation": STAGE_NEGOTIATION,
     "negotiating": STAGE_NEGOTIATION,
@@ -812,7 +828,6 @@ _STAGE_KEYWORDS: dict[str, str] = {
 }
 
 _COMING_SOON_LABELS = {
-    STAGE_SEARCHING:   "Searching for roles",
     STAGE_NEGOTIATION: "Negotiating an offer",
     STAGE_FIRST_90:    "First 90 days planning",
 }
@@ -852,7 +867,10 @@ async def _dispatch_stage(
     if stage == STAGE_INTERVIEW:
         return await _enter_interview(sender, message)
 
-    # 1, 4, 5 → coming soon. Append to interest_signals (deduped).
+    if stage == STAGE_SEARCHING:
+        return await _enter_career_search(sender, message)
+
+    # 4, 5 → coming soon. Append to interest_signals (deduped).
     interests: list[str] = list(data.get("interest_signals") or [])
     if stage not in interests:
         interests.append(stage)
@@ -899,3 +917,16 @@ async def _enter_interview(
     )
     state = await get_user_state(sender)
     return await interview_flow.handle(sender, message, state)
+
+
+async def _enter_career_search(
+    sender: str,
+    message: dict[str, Any],
+) -> dict[str, Any]:
+    await upsert_user_state(
+        sender,
+        {"flow": STATE_CAREER_SEARCH,
+         career_search_flow._STEP_KEY: career_search_flow.INITIAL_STEP},
+    )
+    state = await get_user_state(sender)
+    return await career_search_flow.handle(sender, message, state)
