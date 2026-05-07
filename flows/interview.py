@@ -38,6 +38,7 @@ from models.database import (
     get_user_state,
     upsert_user_state,
     merge_user_state_data,
+    record_artifact,
 )
 from flows._redirect import warm_reprompt
 from services.claude_service import (
@@ -427,12 +428,17 @@ async def _handle_prep_generating(
             if not pdf_bytes
             else "And here's an editable Word version — feel free to tweak anything before submitting."
         )
+        docx_storage_path = f"{sender}/Vima-Interview-Prep.docx"
         try:
             await messenger.send_document(
                 sender, docx_bytes,
                 filename="Vima-Interview-Prep.docx",
                 caption=docx_caption,
             )
+            try:
+                await record_artifact(sender, "interview_prep", docx_storage_path)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("record_artifact(interview_prep) failed: %s", exc)
         except Exception as exc:  # noqa: BLE001
             log.warning("Prep DOCX delivery failed: %s", exc)
 

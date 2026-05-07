@@ -560,23 +560,31 @@ async def get_admin_overview_stats() -> dict[str, Any]:
     def _do() -> dict[str, Any]:
         total_users = len((client.table("users").select("id", count="exact").execute()).data or [])
 
-        active_subs = len((
+        # Distinct active subscribers — a user may have multiple paid rows
+        # (e.g. Razorpay payment + admin fallback insert); count each user once.
+        active_subs_rows = (
             client.table("payments")
-            .select("id", count="exact")
+            .select("user_id")
             .eq("status", "paid")
             .gt("period_end", now_iso)
             .execute()
-        ).data or [])
+        ).data or []
+        active_subs = len({r["user_id"] for r in active_subs_rows})
 
-        payments_resp = (
+        # Revenue: one row per user to avoid double-counting duplicate paid rows.
+        all_paid_rows = (
             client.table("payments")
-            .select("amount_paise")
+            .select("user_id,amount_paise")
             .eq("status", "paid")
             .execute()
-        )
-        total_revenue_paise = sum(
-            (r.get("amount_paise") or 0) for r in (payments_resp.data or [])
-        )
+        ).data or []
+        seen_users: set[str] = set()
+        total_revenue_paise = 0
+        for r in all_paid_rows:
+            uid = r.get("user_id") or ""
+            if uid and uid not in seen_users:
+                seen_users.add(uid)
+                total_revenue_paise += r.get("amount_paise") or 0
 
         new_signups = len((
             client.table("users")
